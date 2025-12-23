@@ -423,12 +423,6 @@ const App: React.FC = () => {
                <div className={`w-2.5 h-2.5 rounded-full ${isSessionActive ? 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]' : 'bg-slate-700 animate-pulse'}`}></div>
                <span className="text-[11px] font-black text-slate-300 tracking-[0.3em] uppercase">{isSessionActive ? 'Core Sync Active' : 'Standby Protocol'}</span>
             </div>
-            {isSessionActive && (
-              <div className="hidden lg:flex items-center space-x-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                <Cpu className="w-3.5 h-3.5" />
-                <span>Node: Gemini-2.5-Native</span>
-              </div>
-            )}
           </div>
           
           <div className="flex items-center space-x-8">
@@ -454,7 +448,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Central Assistant Stage */}
-        <div className="flex-1 flex flex-col items-center justify-center relative min-h-0 w-full z-10 p-4">
+        <div className="flex-1 flex flex-col items-center justify-center relative min-h-0 w-full z-10 p-4 overflow-hidden">
           {hasApiKey === false ? (
             <div className="max-w-md w-full p-10 bg-cyan-950/20 border border-cyan-500/20 rounded-[3rem] backdrop-blur-3xl text-center space-y-8 shadow-2xl animate-in fade-in zoom-in-95 duration-700">
               <div className="w-24 h-24 rounded-full bg-cyan-500/10 flex items-center justify-center mx-auto border border-cyan-500/20">
@@ -473,21 +467,19 @@ const App: React.FC = () => {
               <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">Supports Paid GCP Projects Only</p>
             </div>
           ) : (
-            <div className="relative flex flex-col items-center justify-center group">
-              <div className={`transform transition-all duration-1000 ease-out ${isInteractionDisabled ? 'scale-90 opacity-40 blur-sm' : 'scale-110 md:scale-150'}`}>
-                <AssistantOrb status={status} />
-              </div>
+            <div className="relative flex flex-col items-center justify-center group w-full max-w-2xl h-full">
+               <AssistantOrb status={status} />
               
               {status === AssistantStatus.IDLE && !isInteractionDisabled && (
                 <button 
                   onClick={startAssistant}
-                  className="mt-16 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-2xl px-12 py-5 rounded-full flex items-center space-x-5 group/btn active:scale-95 transition-all shadow-2xl hover:shadow-cyan-500/10 animate-bounce"
+                  className="absolute bottom-1/4 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-2xl px-12 py-5 rounded-full flex items-center space-x-5 group/btn active:scale-95 transition-all shadow-2xl hover:shadow-cyan-500/10 animate-bounce"
                 >
                   <div className="relative">
                     <div className="absolute inset-0 bg-cyan-400/50 rounded-full blur-[10px] animate-ping"></div>
                     <Mic className="w-5 h-5 text-cyan-400 relative z-10" />
                   </div>
-                  <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Connect Command</span>
+                  <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Initialize Sync</span>
                 </button>
               )}
             </div>
