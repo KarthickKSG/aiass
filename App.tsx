@@ -7,11 +7,12 @@ import { createBlob, decode, decodeAudioData } from './utils/audioUtils';
 import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
-import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink } from 'lucide-react';
+import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink, Settings } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssistantStatus>(AssistantStatus.IDLE);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [deviceState, setDeviceState] = useState<DeviceState>({
     wifi: true,
     bluetooth: true,
@@ -61,7 +62,6 @@ const App: React.FC = () => {
       const selected = await window.aistudio.hasSelectedApiKey();
       setHasKey(selected);
     } else {
-      // Fallback for environments where process.env is the only way
       setHasKey(!!process.env.API_KEY);
     }
   };
@@ -69,7 +69,8 @@ const App: React.FC = () => {
   const handleLinkKey = async () => {
     if (window.aistudio) {
       await window.aistudio.openSelectKey();
-      setHasKey(true); // Proceeding as per instructions (assume success after trigger)
+      setHasKey(true);
+      setShowSettings(false);
     }
   };
 
@@ -165,7 +166,6 @@ const App: React.FC = () => {
     setStatus(AssistantStatus.THINKING);
     try {
       await initAudio();
-      // Always create a new instance right before use to ensure latest API key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -280,6 +280,43 @@ const App: React.FC = () => {
 
   return (
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select">
+      {showSettings && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl p-8 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black google-font tracking-tight">Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white transition-colors">
+                <ShieldAlert className="w-6 h-6 rotate-45" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <button 
+                onClick={handleLinkKey}
+                className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
+              >
+                <div className="flex items-center space-x-3">
+                  <Key className="w-5 h-5 text-blue-400" />
+                  <span className="text-sm font-bold text-slate-200">Update API Key</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
+              </button>
+              
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl opacity-50 cursor-not-allowed">
+                <div className="flex items-center space-x-3">
+                  <Battery className="w-5 h-5 text-green-400" />
+                  <span className="text-sm font-bold text-slate-200">Power Settings</span>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-white/5">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] text-center">Version 4.2.0-Stable</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-colors duration-1000 ${isSessionActive ? 'bg-blue-900/30' : 'bg-slate-900/10'}`}></div>
       </div>
@@ -302,6 +339,13 @@ const App: React.FC = () => {
               title="Toggle Vision"
             >
               {isVisionActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </button>
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-2 rounded-lg border bg-white/5 border-white/10 text-slate-500 hover:text-white transition-all"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -342,8 +386,10 @@ const App: React.FC = () => {
           <div className="text-[10px] font-black tracking-tight text-slate-500 uppercase">
             {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' })}
           </div>
-          <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5">
-             <span className="text-[10px] font-bold text-slate-400">ENCRYPTED LINK</span>
+          <div className="flex items-center space-x-2">
+            <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5">
+               <span className="text-[10px] font-bold text-slate-400">ENCRYPTED LINK</span>
+            </div>
           </div>
         </header>
 
