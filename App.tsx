@@ -151,10 +151,23 @@ const App: React.FC = () => {
 
   const startAssistant = async () => {
     setErrorMessage(null);
+    
+    // Check for API key before starting
+    if (window.aistudio) {
+      const hasKey = await window.aistudio.hasSelectedApiKey();
+      if (!hasKey) {
+        await window.aistudio.openSelectKey();
+        // Proceeding assuming success per guidelines
+      }
+    }
+
     setStatus(AssistantStatus.THINKING);
     try {
       await initAudio();
+      
+      // Initialize fresh instance to pick up latest key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
@@ -205,8 +218,10 @@ const App: React.FC = () => {
           onerror: (e) => {
             setStatus(AssistantStatus.ERROR);
             const msg = (e as any).message || "";
+            // Handle race condition: trigger key selection if not found
             if (msg.includes("Requested entity was not found")) {
-              setErrorMessage("API connection error. Please verify project settings in Settings.");
+              setErrorMessage("Security link lost. Please re-select project key.");
+              if (window.aistudio) window.aistudio.openSelectKey();
             } else {
               setErrorMessage("Sync connection failed.");
             }
@@ -260,15 +275,20 @@ const App: React.FC = () => {
                 <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
               </button>
               
-              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl opacity-50 cursor-not-allowed">
+              <a 
+                href="https://ai.google.dev/gemini-api/docs/billing" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all"
+              >
                 <div className="flex items-center space-x-3">
                   <Battery className="w-5 h-5 text-green-400" />
-                  <span className="text-sm font-bold text-slate-200">Power Settings</span>
+                  <span className="text-sm font-bold text-slate-200">Billing & Quota</span>
                 </div>
-              </div>
+              </a>
 
               <div className="pt-6 border-t border-white/5">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] text-center">Version 4.2.0-Stable</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] text-center">Version 4.2.5-Stable</p>
               </div>
             </div>
           </div>
@@ -282,14 +302,22 @@ const App: React.FC = () => {
       <aside className="z-20 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 bg-slate-950/60 backdrop-blur-3xl border-b md:border-b-0 md:border-r border-white/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden">
-              <img src="/Logo.png" alt="King AI Logo" className="w-full h-full object-cover" onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement!.innerHTML = '<div class="flex items-center justify-center w-full h-full text-white"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg></div>';
-              }} />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden border border-white/10">
+              <img 
+                src="Logo.png" 
+                alt="King AI Logo" 
+                className="w-full h-full object-cover" 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="flex items-center justify-center w-full h-full text-white"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg></div>';
+                  }
+                }} 
+              />
             </div>
             <div>
-              <h1 className="text-base font-bold google-font leading-tight">KING AI</h1>
+              <h1 className="text-lg font-black google-font leading-tight tracking-tighter">KING AI</h1>
               <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em]">Vision Module v1.2</p>
             </div>
           </div>
@@ -355,8 +383,8 @@ const App: React.FC = () => {
         </header>
 
         {errorMessage && (
-          <div className="mx-auto mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-xs font-bold flex items-center space-x-3 shadow-lg">
-            <ShieldAlert className="w-5 h-5 text-red-500" />
+          <div className="mx-auto mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-xs font-bold flex items-center space-x-3 shadow-lg max-w-sm">
+            <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
