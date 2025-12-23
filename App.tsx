@@ -8,7 +8,7 @@ import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
 import { 
-  ShieldAlert, Cpu, Settings, Camera, Zap, Terminal, BrainCircuit, Activity, BarChart3, X, Mic, MicOff, Info
+  ShieldAlert, Cpu, Settings, Camera, Zap, Terminal, BrainCircuit, Activity, BarChart3, X, Mic, MicOff, Info, Lock
 } from 'lucide-react';
 
 const FRAME_RATE = 1;
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<AssistantStatus>(AssistantStatus.IDLE);
   const [mode, setMode] = useState<AssistantMode>(AssistantMode.PRECISION);
   const [showSettings, setShowSettings] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   
   const [deviceState, setDeviceState] = useState<DeviceState>({
     wifi: true,
@@ -57,12 +58,27 @@ const App: React.FC = () => {
   const visionIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
+    checkApiKey();
     return () => {
       stopAssistant();
       stopVision();
       if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
+
+  const checkApiKey = async () => {
+    if (window.aistudio) {
+      const selected = await window.aistudio.hasSelectedApiKey();
+      setHasApiKey(selected);
+    }
+  };
+
+  const handleOpenApiKeyDialog = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      setHasApiKey(true);
+    }
+  };
 
   const addNotification = (sender: string, content: string, type: 'message' | 'alert' | 'schedule') => {
     const newNotif: Notification = {
@@ -86,7 +102,7 @@ const App: React.FC = () => {
         streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
     } catch (err) {
-      setErrorMessage("Microphone access denied. Please check permissions.");
+      setErrorMessage("Microphone access denied. Synaptic link severed.");
       throw err;
     }
   };
@@ -119,7 +135,7 @@ const App: React.FC = () => {
         }
       }, 1000 / FRAME_RATE);
     } catch (err) {
-      setErrorMessage("Vision module handshake failed.");
+      setErrorMessage("Vision sensor error. Core bypass enabled.");
     }
   };
 
@@ -129,27 +145,17 @@ const App: React.FC = () => {
     setIsVisionActive(false);
   };
 
-  const handleApiKeySelection = async () => {
-    if (window.aistudio) {
-      await window.aistudio.openSelectKey();
-    } else {
-      setErrorMessage("API Selection utility is not available in this environment.");
-    }
-  };
-
   const startAssistant = async () => {
     setErrorMessage(null);
 
-    // Initial check for API key
     if (window.aistudio && !await window.aistudio.hasSelectedApiKey()) {
-      await window.aistudio.openSelectKey();
+      await handleOpenApiKeyDialog();
     }
 
     setStatus(AssistantStatus.THINKING);
     try {
       await initAudio();
       
-      // Re-initialize for every connection to ensure latest key is used
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const config: any = {
@@ -216,13 +222,12 @@ const App: React.FC = () => {
               nextStartTimeRef.current = 0;
             }
           },
-          onerror: (e) => {
-            console.error(e);
-            if (e.message?.includes("Requested entity was not found")) {
-              setErrorMessage("API Key expired or project not found. Please re-select your key.");
-              handleApiKeySelection();
+          onerror: (e: any) => {
+            if (e?.message?.includes('not found')) {
+              setHasApiKey(false);
+              setErrorMessage("API Key rejected. Re-authentication required.");
             } else {
-              setErrorMessage("Synaptic drift detected. Reconnecting...");
+              setErrorMessage("Neural feedback error. Re-syncing...");
             }
           },
           onclose: () => { setIsSessionActive(false); setStatus(AssistantStatus.IDLE); }
@@ -232,7 +237,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (err: any) {
       setStatus(AssistantStatus.ERROR);
-      setErrorMessage(err.message || "Failed to initialize synaptic link.");
+      setErrorMessage(err.message || "Cognitive initialization failed.");
     }
   };
 
@@ -242,225 +247,159 @@ const App: React.FC = () => {
     stopVision();
   };
 
+  const isInteractionDisabled = status === AssistantStatus.THINKING || status === AssistantStatus.SPEAKING;
+
   return (
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select">
-      {/* Dynamic Background Neural Layer */}
+      {/* Background FX */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-30">
          <div className={`absolute inset-0 bg-gradient-to-br from-blue-900/20 via-slate-900/10 to-transparent transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-0'}`}></div>
-         <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-cyan-500/5 via-transparent to-transparent animate-pulse"></div>
       </div>
 
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
           <div className="glass w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-white/10 ring-1 ring-cyan-500/20">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-xl font-black google-font tracking-tight flex items-center">
                 <BrainCircuit className="w-6 h-6 mr-3 text-cyan-400" />
-                Kernel Config
+                Kernel Settings
               </h2>
-              <button 
-                onClick={() => setShowSettings(false)} 
-                className="p-2.5 rounded-2xl bg-white/5 text-slate-400 hover:text-white transition-all hover:bg-white/10"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setShowSettings(false)} className="p-2.5 rounded-2xl bg-white/5 text-slate-400 hover:text-white transition-all"><X className="w-5 h-5" /></button>
             </div>
             
             <div className="space-y-8">
               <div className="space-y-4">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Cognitive Protocol</label>
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Synaptic Mode</label>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.values(AssistantMode).map(m => (
-                    <button 
-                      key={m}
-                      onClick={() => setMode(m)}
-                      className={`py-3 rounded-2xl text-[9px] font-black uppercase tracking-tighter border transition-all duration-300 ${mode === m ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
-                    >
-                      {m}
-                    </button>
+                    <button key={m} onClick={() => setMode(m)} className={`py-3 rounded-2xl text-[9px] font-black uppercase transition-all border ${mode === m ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400' : 'bg-white/5 border-white/5 text-slate-500'}`}>{m}</button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-4">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Authentication</label>
-                <div className="space-y-3">
-                  <button 
-                    onClick={handleApiKeySelection}
-                    className="w-full py-4 rounded-2xl bg-cyan-600/10 border border-cyan-500/30 text-cyan-400 font-black text-[10px] tracking-widest uppercase hover:bg-cyan-600/20 transition-all flex items-center justify-center space-x-3"
-                  >
-                    <Cpu className="w-4 h-4" />
-                    <span>Select Core API Key</span>
-                  </button>
-                  <a 
-                    href="https://ai.google.dev/gemini-api/docs/billing" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-2 text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1 hover:text-slate-400 transition-colors"
-                  >
-                    <Info className="w-3 h-3" />
-                    <span>View Billing Documentation</span>
-                  </a>
-                </div>
-              </div>
-
-              <div className="p-5 bg-white/5 border border-white/10 rounded-3xl flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Core Integrity</span>
-                  <span className="text-[11px] font-bold text-cyan-400">OPTIMIZED 8.4</span>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-cyan-400 animate-pulse" />
-                </div>
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Authentication Core</label>
+                <button 
+                  onClick={handleOpenApiKeyDialog}
+                  className="w-full p-5 rounded-3xl bg-cyan-600/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-between hover:bg-cyan-600/20 transition-all"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Cpu className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Update API Key</span>
+                  </div>
+                  <Info className="w-4 h-4 opacity-50" />
+                </button>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="block text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1 text-center hover:text-cyan-400">GCP Billing Documentation Required</a>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* SIDEBAR: Diagnostics & Visuals */}
+      {/* SIDEBAR: Controls & Feed */}
       <aside className="z-20 w-full md:w-85 lg:w-96 shrink-0 p-4 md:p-6 flex flex-col space-y-5 glass border-b md:border-b-0 md:border-r border-white/5">
-        <div className="flex items-center justify-between shrink-0">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-800 flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-800 flex items-center justify-center shadow-lg border border-white/10">
               <img src="https://cdn-icons-png.flaticon.com/512/2593/2593635.png" alt="King AI" className="w-9 h-9 object-contain" />
             </div>
             <div>
               <h1 className="text-lg font-black google-font tracking-tighter">KING AI</h1>
-              <div className="flex items-center space-x-1.5">
-                <div className={`w-1.5 h-1.5 rounded-full ${isSessionActive ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-slate-700'}`}></div>
-                <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em]">Neural Node 0xAF</p>
-              </div>
+              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em]">Quantum Core v2.5</p>
             </div>
           </div>
           <div className="flex space-x-2">
-            <button 
-              onClick={isVisionActive ? stopVision : startVision} 
-              className={`p-3 rounded-2xl border transition-all duration-300 ${isVisionActive ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-cyan-500/20 shadow-lg' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}
-            >
-              <Camera className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => setShowSettings(true)} 
-              className="p-3 rounded-2xl border bg-white/5 border-white/10 text-slate-500 hover:text-white transition-all hover:bg-white/10"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+            <button onClick={isVisionActive ? stopVision : startVision} className={`p-3 rounded-2xl border transition-all ${isVisionActive ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' : 'bg-white/5 border-white/10 text-slate-500'}`}><Camera className="w-5 h-5" /></button>
+            <button onClick={() => setShowSettings(true)} className="p-3 rounded-2xl border bg-white/5 border-white/10 text-slate-500 transition-all"><Settings className="w-5 h-5" /></button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-5 flex flex-col">
+        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-5">
           {isVisionActive && (
-            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl shrink-0">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-90" />
+            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10">
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-80" />
               <canvas ref={canvasRef} width="640" height="480" className="hidden" />
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_40%,_black_90%)] opacity-60"></div>
-                <div className="absolute inset-0 border-[0.5px] border-cyan-400/20 m-4 rounded-[2rem]"></div>
-                <div className="absolute top-4 left-4 right-4 h-[1px] bg-cyan-400/30 animate-scan"></div>
-                <div className="absolute bottom-6 left-6 flex items-center space-x-3 px-3 py-1.5 bg-black/70 backdrop-blur-xl rounded-full border border-white/10 ring-1 ring-cyan-500/20">
-                  <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                  <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">Vision Encrypted</span>
-                </div>
-              </div>
+              <div className="absolute top-4 left-4 right-4 h-[1px] bg-cyan-400/30 animate-scan"></div>
             </div>
           )}
 
-          <div className="glass rounded-[2.5rem] p-6 space-y-5 shrink-0">
+          <div className="glass rounded-[2.5rem] p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center">
-                <BarChart3 className="w-3.5 h-3.5 mr-2" /> Synaptic Load
-              </span>
-              <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest animate-pulse">Nominal</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center"><BarChart3 className="w-3.5 h-3.5 mr-2" /> Load State</span>
+              <span className="text-[10px] font-black text-cyan-400 animate-pulse">OPTIMIZED</span>
             </div>
-            <div className="flex space-x-2 h-10 items-end">
-              {[35, 65, 40, 85, 60, 75, 45, 80, 50, 40, 90, 55].map((h, i) => (
-                <div key={i} className="flex-1 bg-cyan-500/20 rounded-t-md transition-all duration-700 hover:bg-cyan-500/40" style={{ height: `${isSessionActive ? h : 15}%` }}></div>
+            <div className="flex space-x-2 h-8 items-end">
+              {[30, 60, 45, 90, 65, 80, 50, 85, 40].map((h, i) => (
+                <div key={i} className="flex-1 bg-cyan-500/20 rounded-t-md transition-all duration-700" style={{ height: `${isSessionActive ? h : 15}%` }}></div>
               ))}
             </div>
           </div>
 
-          <div className="flex-1">
-            <DeviceDashboard state={deviceState} />
-          </div>
+          <DeviceDashboard state={deviceState} />
         </div>
 
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
-          disabled={status === AssistantStatus.THINKING}
-          className={`w-full py-6 rounded-[2rem] font-black text-[11px] tracking-[0.5em] uppercase transition-all duration-700 shadow-2xl active:scale-[0.97] group shrink-0 ${
+          disabled={isInteractionDisabled}
+          className={`w-full py-6 rounded-[2rem] font-black text-[11px] tracking-[0.5em] uppercase transition-all duration-700 active:scale-95 group ${
             isSessionActive 
-              ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20' 
-              : 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white shadow-cyan-600/30 hover:shadow-cyan-500/50 hover:scale-[1.02]'
-          }`}
+              ? 'bg-red-500/10 text-red-400 border border-red-500/30' 
+              : 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white shadow-lg'
+          } ${isInteractionDisabled ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
         >
           <span className="flex items-center justify-center">
-            {isSessionActive ? <MicOff className="w-4 h-4 mr-3" /> : <Mic className="w-4 h-4 mr-3" />}
-            {isSessionActive ? 'Disconnect Core' : 'Initialize Voice Input'}
+            {isSessionActive ? <MicOff className="w-4 h-4 mr-3" /> : <Mic className="w-4 h-4 mr-3 group-hover:scale-110" />}
+            {status === AssistantStatus.THINKING ? 'THINKING...' : status === AssistantStatus.SPEAKING ? 'SPEAKING...' : isSessionActive ? 'TERMINATE LINK' : 'ENGAGE KING'}
           </span>
         </button>
       </aside>
 
-      {/* MAIN VIEWPORT: Assistant & Terminal */}
-      <main className="z-10 flex-1 flex flex-col relative px-4 py-6 md:px-10 md:py-8 overflow-hidden items-center">
-        <header className="flex justify-between items-center mb-6 md:mb-10 w-full max-w-5xl px-2 shrink-0">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black tracking-[0.4em] text-slate-600 uppercase mb-2">Operation Mode</span>
-            <div className="flex items-center space-x-3">
-              <div className="px-5 py-2 glass rounded-full flex items-center space-x-3 border-white/5 ring-1 ring-white/5 shadow-xl">
-                 <div className={`w-2 h-2 rounded-full ${isSessionActive ? 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]' : 'bg-slate-700 animate-pulse'}`}></div>
-                 <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
-                   {isSessionActive ? `[${mode}] SYNAPSE ACTIVE` : 'LISTENING STANDBY'}
-                 </span>
-              </div>
+      {/* MAIN VIEWPORT */}
+      <main className="z-10 flex-1 flex flex-col items-center px-4 py-6 md:px-10 md:py-8 overflow-hidden">
+        <header className="flex justify-between items-center mb-10 w-full max-w-5xl">
+          <div className="flex items-center space-x-4">
+            <div className={`px-5 py-2 glass rounded-full flex items-center space-x-3 border-white/5 ${isSessionActive ? 'ring-1 ring-cyan-500/30' : ''}`}>
+               <div className={`w-2 h-2 rounded-full ${isSessionActive ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-slate-700'}`}></div>
+               <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">{isSessionActive ? 'SYNAPSE ACTIVE' : 'STANDBY'}</span>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-6">
-             <div className="text-right hidden sm:block">
-               <div className="text-sm font-black text-white uppercase tracking-tighter tabular-nums">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-               <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em]">Quantum Sync</div>
-             </div>
-             <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center border-white/5 shadow-inner">
-                <Terminal className="w-5 h-5 text-slate-500" />
-             </div>
-          </div>
+          <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center border-white/5"><Terminal className="w-5 h-5 text-slate-500" /></div>
         </header>
 
         {errorMessage && (
-          <div className="mx-auto max-w-lg w-full mb-8 p-5 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-200 text-[10px] font-black uppercase tracking-widest flex items-center space-x-5 shadow-2xl animate-in slide-in-from-top-6 shrink-0">
-            <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
-            <span className="leading-relaxed">{errorMessage}</span>
+          <div className="max-w-lg w-full mb-8 p-5 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-200 text-[10px] font-black uppercase tracking-widest flex items-center space-x-4 animate-in slide-in-from-top-4">
+            <ShieldAlert className="w-5 h-5 text-red-500" />
+            <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* Central Assistant Orb - Precisely Centered */}
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0 relative w-full group">
-          <button 
-            onClick={isSessionActive ? stopAssistant : startAssistant}
-            disabled={status === AssistantStatus.THINKING}
-            className={`relative transform transition-all duration-700 hover:scale-105 active:scale-95 ${status === AssistantStatus.THINKING ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-          >
-            <div className="absolute -inset-10 bg-cyan-400/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="scale-110 md:scale-125">
-              <AssistantOrb status={status} />
-            </div>
-            
-            {status === AssistantStatus.IDLE && (
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center space-x-2 animate-bounce">
-                    <Mic className="w-4 h-4 text-cyan-400" />
-                    <span className="text-[8px] font-black text-white uppercase tracking-widest">Tap to Speak</span>
-                 </div>
-               </div>
-            )}
-          </button>
+        {hasApiKey === false && (
+          <div className="max-w-lg w-full mb-8 p-6 bg-cyan-500/10 border border-cyan-500/20 rounded-[2rem] text-cyan-100 flex flex-col items-center space-y-4 shadow-2xl">
+            <Lock className="w-10 h-10 text-cyan-400" />
+            <h3 className="font-black text-sm tracking-widest uppercase">Encryption Key Required</h3>
+            <p className="text-[10px] text-center opacity-70 leading-relaxed uppercase tracking-tighter">You must select a paid API key from your Google AI Studio project to access high-bandwidth neural features.</p>
+            <button onClick={handleOpenApiKeyDialog} className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 px-8 py-3 rounded-full font-black text-[10px] tracking-widest uppercase transition-all shadow-lg">Authenticate Core</button>
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col items-center justify-center w-full group relative">
+          <div className={`transform transition-all duration-1000 ${isInteractionDisabled ? 'scale-95 opacity-80' : 'scale-110 md:scale-125'}`}>
+            <AssistantOrb status={status} />
+          </div>
+          
+          {status === AssistantStatus.IDLE && !isInteractionDisabled && (
+            <button 
+              onClick={startAssistant}
+              className="mt-8 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-xl px-10 py-4 rounded-full flex items-center space-x-4 group active:scale-95 transition-all shadow-2xl"
+            >
+              <div className="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></div>
+              <span className="text-[11px] font-black text-white tracking-[0.5em] uppercase">Initialize Voice Link</span>
+            </button>
+          )}
         </div>
 
-        {/* Console / Notification Area - Balanced at the bottom */}
-        <div className="w-full max-w-2xl mt-8 shrink-0">
-          <div className="h-[260px] glass rounded-[3rem] p-6 shadow-2xl border-white/10 ring-1 ring-white/5 relative overflow-hidden">
-            {/* Terminal Backdrop Pattern */}
+        <div className="w-full max-w-2xl mt-8">
+          <div className="h-[260px] glass rounded-[3rem] p-6 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
             <NotificationPanel notifications={notifications} />
           </div>
