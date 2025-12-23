@@ -7,11 +7,14 @@ import { createBlob, decode, decodeAudioData } from './utils/audioUtils';
 import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
-import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink, Settings } from 'lucide-react';
+import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink, Settings, Save, CheckCircle2, Trash2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssistantStatus>(AssistantStatus.IDLE);
   const [showSettings, setShowSettings] = useState(false);
+  const [manualKey, setManualKey] = useState<string>(localStorage.getItem('king_api_key') || '');
+  const [keyApplied, setKeyApplied] = useState<boolean>(!!localStorage.getItem('king_api_key'));
+  
   const [deviceState, setDeviceState] = useState<DeviceState>({
     wifi: true,
     bluetooth: true,
@@ -23,7 +26,7 @@ const App: React.FC = () => {
     brightness: 80,
     volume: 50,
   });
-  const [notifications] = useState<Notification[]>([
+  const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: '1',
       sender: 'King System',
@@ -62,9 +65,35 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveManualKey = () => {
+    if (manualKey.trim()) {
+      localStorage.setItem('king_api_key', manualKey.trim());
+      setKeyApplied(true);
+      addNotification('System', 'Manual API key applied successfully.', 'alert');
+    }
+  };
+
+  const handleClearManualKey = () => {
+    localStorage.removeItem('king_api_key');
+    setManualKey('');
+    setKeyApplied(false);
+    addNotification('System', 'Manual API key cleared. Using system defaults.', 'alert');
+  };
+
+  const addNotification = (sender: string, content: string, type: 'message' | 'alert' | 'schedule') => {
+    const newNotif: Notification = {
+      id: Date.now().toString(),
+      sender,
+      content,
+      timestamp: new Date(),
+      type
+    };
+    setNotifications(prev => [newNotif, ...prev].slice(0, 10));
+  };
+
   const initAudio = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error("Secure connection (HTTPS) required for hardware access.");
+      throw new Error("Secure connection required for audio hardware.");
     }
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
@@ -114,7 +143,7 @@ const App: React.FC = () => {
         }
       }, 1000);
     } catch (err) {
-      setErrorMessage("Vision restricted by hardware or user.");
+      setErrorMessage("Vision restricted by hardware.");
     }
   };
 
@@ -139,6 +168,7 @@ const App: React.FC = () => {
           break;
         case 'set_alarm':
           result = `Alarm set for ${fc.args.time}.`;
+          addNotification('King', result, 'schedule');
           break;
       }
       sessionPromiseRef.current?.then(session => {
@@ -152,12 +182,13 @@ const App: React.FC = () => {
   const startAssistant = async () => {
     setErrorMessage(null);
     
-    // Check for API key before starting
-    if (window.aistudio) {
+    // Determine active API key
+    const activeKey = manualKey || process.env.API_KEY;
+
+    if (!activeKey && window.aistudio) {
       const hasKey = await window.aistudio.hasSelectedApiKey();
       if (!hasKey) {
         await window.aistudio.openSelectKey();
-        // Proceeding assuming success per guidelines
       }
     }
 
@@ -165,8 +196,7 @@ const App: React.FC = () => {
     try {
       await initAudio();
       
-      // Initialize fresh instance to pick up latest key
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: manualKey || process.env.API_KEY });
       
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -218,12 +248,10 @@ const App: React.FC = () => {
           onerror: (e) => {
             setStatus(AssistantStatus.ERROR);
             const msg = (e as any).message || "";
-            // Handle race condition: trigger key selection if not found
             if (msg.includes("Requested entity was not found")) {
-              setErrorMessage("Security link lost. Please re-select project key.");
-              if (window.aistudio) window.aistudio.openSelectKey();
+              setErrorMessage("Key invalid or not found. Update in Settings.");
             } else {
-              setErrorMessage("Sync connection failed.");
+              setErrorMessage("Connection failed. Check network.");
             }
           },
           onclose: () => {
@@ -241,7 +269,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (err: any) {
       setStatus(AssistantStatus.ERROR);
-      setErrorMessage("Boot error: Check permissions.");
+      setErrorMessage("Hardware error: Check permissions.");
     }
   };
 
@@ -263,50 +291,84 @@ const App: React.FC = () => {
               </button>
             </div>
             
-            <div className="space-y-4">
-              <button 
-                onClick={handleLinkKey}
-                className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
-              >
-                <div className="flex items-center space-x-3">
-                  <Key className="w-5 h-5 text-blue-400" />
-                  <span className="text-sm font-bold text-slate-200">Update API Key</span>
+            <div className="space-y-6">
+              {/* Connection Section */}
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Connection Configuration</h3>
+                
+                <div className="relative group">
+                  <input 
+                    type="password"
+                    value={manualKey}
+                    onChange={(e) => setManualKey(e.target.value)}
+                    placeholder="Enter manual Gemini key..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-sm font-medium focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-600"
+                  />
+                  <div className="absolute right-2 top-2 flex space-x-1">
+                    {keyApplied ? (
+                      <button onClick={handleClearManualKey} className="p-2 text-red-400 hover:bg-red-400/10 rounded-xl transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button onClick={handleSaveManualKey} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-colors">
+                        <Save className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors" />
-              </button>
-              
-              <a 
-                href="https://ai.google.dev/gemini-api/docs/billing" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all"
-              >
-                <div className="flex items-center space-x-3">
-                  <Battery className="w-5 h-5 text-green-400" />
-                  <span className="text-sm font-bold text-slate-200">Billing & Quota</span>
-                </div>
-              </a>
 
-              <div className="pt-6 border-t border-white/5">
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] text-center">Version 4.2.5-Stable</p>
+                <button 
+                  onClick={handleLinkKey}
+                  className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Key className="w-5 h-5 text-indigo-400" />
+                    <span className="text-sm font-bold text-slate-200">AI Studio Link</span>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className={`w-5 h-5 ${keyApplied ? 'text-green-400' : 'text-blue-400'}`} />
+                  <span className="text-xs font-bold text-slate-300">
+                    {keyApplied ? 'Manual Key Active' : 'System Key Active'}
+                  </span>
+                </div>
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+              </div>
+
+              <div className="pt-6 border-t border-white/5 flex flex-col items-center">
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">King Core v4.3.0-Stable</p>
+                <a 
+                  href="https://ai.google.dev/gemini-api/docs/billing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="mt-2 text-[9px] text-blue-500/60 hover:text-blue-400 font-bold uppercase tracking-widest flex items-center space-x-1"
+                >
+                  <span>Billing Documentation</span>
+                  <ExternalLink className="w-2 h-2" />
+                </a>
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Background Decor */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-colors duration-1000 ${isSessionActive ? 'bg-blue-900/30' : 'bg-slate-900/10'}`}></div>
+        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-colors duration-1000 ${isSessionActive ? 'bg-blue-900/20' : 'bg-slate-900/10'}`}></div>
       </div>
 
       <aside className="z-20 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 bg-slate-950/60 backdrop-blur-3xl border-b md:border-b-0 md:border-r border-white/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden border border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden border border-white/10 p-0.5">
               <img 
                 src="Logo.png" 
                 alt="King AI Logo" 
-                className="w-full h-full object-cover" 
+                className="w-full h-full object-contain" 
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   const parent = e.currentTarget.parentElement;
@@ -324,14 +386,14 @@ const App: React.FC = () => {
           <div className="flex space-x-2">
             <button 
               onClick={isVisionActive ? stopVision : startVision}
-              className={`p-2 rounded-lg border transition-all ${isVisionActive ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500'}`}
+              className={`p-2.5 rounded-xl border transition-all ${isVisionActive ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}
               title="Toggle Vision"
             >
               {isVisionActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
             <button 
               onClick={() => setShowSettings(true)}
-              className="p-2 rounded-lg border bg-white/5 border-white/10 text-slate-500 hover:text-white transition-all"
+              className="p-2.5 rounded-xl border bg-white/5 border-white/10 text-slate-500 hover:text-white transition-all"
               title="Settings"
             >
               <Settings className="w-4 h-4" />
@@ -341,12 +403,12 @@ const App: React.FC = () => {
 
         <div className="hidden md:flex flex-1 overflow-y-auto scrollbar-hide flex-col space-y-4">
           {isVisionActive && (
-            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 group">
+            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 group shadow-2xl">
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
               <canvas ref={canvasRef} width="640" height="480" className="hidden" />
-              <div className="absolute top-2 left-2 flex items-center space-x-1 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-full">
-                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Live Feed</span>
+              <div className="absolute top-3 left-3 flex items-center space-x-1.5 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_#ef4444]"></div>
+                <span className="text-[8px] font-black text-white uppercase tracking-tighter">Vision Active</span>
               </div>
             </div>
           )}
@@ -356,34 +418,35 @@ const App: React.FC = () => {
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
           disabled={status === AssistantStatus.THINKING}
-          className={`w-full py-4 rounded-xl font-black text-[10px] tracking-[0.2em] uppercase transition-all duration-500 shadow-2xl ${
-            isSessionActive ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-blue-600 text-white shadow-blue-600/20'
+          className={`w-full py-4.5 rounded-2xl font-black text-[10px] tracking-[0.3em] uppercase transition-all duration-500 shadow-2xl active:scale-95 ${
+            isSessionActive ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-blue-600 text-white shadow-blue-600/30'
           }`}
         >
-          {isSessionActive ? 'End Session' : 'Wake King'}
+          {isSessionActive ? 'Deactivate' : 'Wake King'}
         </button>
       </aside>
 
       <main className="z-10 flex-1 flex flex-col relative p-4 md:p-6 overflow-hidden">
         {isVisionActive && (
-          <div className="md:hidden absolute top-4 right-4 w-28 aspect-video rounded-xl overflow-hidden border border-white/10 z-30 shadow-2xl">
+          <div className="md:hidden absolute top-4 right-4 w-28 aspect-video rounded-xl overflow-hidden border border-white/10 z-30 shadow-2xl bg-black">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
           </div>
         )}
 
         <header className="flex justify-between items-center mb-8">
-          <div className="text-[10px] font-black tracking-tight text-slate-500 uppercase">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' })}
+          <div className="text-[10px] font-black tracking-widest text-slate-500 uppercase">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}
           </div>
           <div className="flex items-center space-x-2">
-            <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5">
-               <span className="text-[10px] font-bold text-slate-400">ENCRYPTED LINK</span>
+            <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5 flex items-center space-x-2">
+               <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
+               <span className="text-[10px] font-black text-slate-400 tracking-widest">QUANTUM LINK</span>
             </div>
           </div>
         </header>
 
         {errorMessage && (
-          <div className="mx-auto mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-xs font-bold flex items-center space-x-3 shadow-lg max-w-sm">
+          <div className="mx-auto mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-200 text-xs font-bold flex items-center space-x-3 shadow-2xl max-w-sm animate-in fade-in slide-in-from-top-4">
             <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -393,7 +456,7 @@ const App: React.FC = () => {
           <AssistantOrb status={status} />
         </div>
 
-        <div className="max-w-xl mx-auto w-full mt-auto flex flex-col">
+        <div className="max-w-xl mx-auto w-full mt-auto flex flex-col h-[220px]">
           <NotificationPanel notifications={notifications} />
         </div>
       </main>
