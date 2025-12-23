@@ -159,9 +159,8 @@ const App: React.FC = () => {
 
     setStatus(AssistantStatus.THINKING);
     try {
-      await initAudio();
-      
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      await initAudio();
       
       const config: any = {
         responseModalities: [Modality.AUDIO],
@@ -256,10 +255,28 @@ const App: React.FC = () => {
 
   return (
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select selection:bg-cyan-500/30">
-      {/* Background Ambient Layer */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className={`absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-slate-950 to-blue-950/20 transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-40'}`}></div>
-        <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(circle_at_center,_#22d3ee_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+      
+      {/* GLOBAL NEURAL BACKGROUND SYSTEM - FIXED POSITIONING */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Deep Radiant Gradient */}
+        <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(15,23,42,0.8)_0%,_#020617_100%)] transition-all duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-60'}`}></div>
+        
+        {/* Responsive Atmospheric Pulse */}
+        <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-950/20 via-transparent to-blue-950/20 transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-20'}`}></div>
+
+        {/* Precision Synaptic Grid - Aligned to Viewport Center */}
+        <div 
+          className="absolute inset-0 opacity-[0.03] transition-all duration-1000 ease-out"
+          style={{ 
+            backgroundImage: `radial-gradient(circle at 1px 1px, #22d3ee 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
+            backgroundPosition: 'center center',
+            transform: isSessionActive ? 'scale(1.05) translateZ(0)' : 'scale(1) translateZ(0)'
+          }}
+        ></div>
+        
+        {/* Dynamic Focus Bloom */}
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] bg-[radial-gradient(circle_at_center,_rgba(34,211,238,0.04)_0%,_transparent_50%)] transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-0'}`}></div>
       </div>
 
       {showSettings && (
@@ -339,22 +356,22 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* SIDEBAR: Diagnostics & Environment (Hidden on smallest screens, scrolls on mobile) */}
-      <aside className="z-20 w-full md:w-[380px] shrink-0 p-4 md:p-8 flex flex-col space-y-6 glass border-b md:border-b-0 md:border-r border-white/5 max-h-[40dvh] md:max-h-full overflow-y-auto scrollbar-hide">
+      {/* SIDEBAR: Command Center Diagnostics */}
+      <aside className="z-20 w-full md:w-[400px] shrink-0 p-4 md:p-8 flex flex-col space-y-6 glass border-b md:border-b-0 md:border-r border-white/10 max-h-[45dvh] md:max-h-full overflow-y-auto scrollbar-hide shadow-2xl relative">
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-800 flex items-center justify-center shadow-2xl border border-white/10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-800 flex items-center justify-center shadow-2xl border border-white/10 ring-1 ring-cyan-500/20">
               <img src="https://cdn-icons-png.flaticon.com/512/2593/2593635.png" alt="King AI" className="w-10 h-10 object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-black google-font tracking-tighter">KING AI</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Synaptic Link 2.5</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Neural Node v2.5</p>
             </div>
           </div>
           <div className="flex space-x-2">
             <button 
               onClick={isVisionActive ? stopVision : startVision} 
-              className={`p-4 rounded-2xl border transition-all ${isVisionActive ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-lg' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}
+              className={`p-4 rounded-2xl border transition-all duration-300 ${isVisionActive ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'}`}
             >
               <Camera className="w-5 h-5" />
             </button>
@@ -369,7 +386,7 @@ const App: React.FC = () => {
 
         <div className="space-y-6 flex-1">
           {isVisionActive && (
-            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl shrink-0 group">
+            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl shrink-0 group ring-1 ring-cyan-500/20">
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
               <canvas ref={canvasRef} width="640" height="480" className="hidden" />
               <div className="absolute inset-0 pointer-events-none">
@@ -377,16 +394,16 @@ const App: React.FC = () => {
                 <div className="absolute top-4 left-4 right-4 h-[1px] bg-cyan-400/30 animate-scan"></div>
                 <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                   <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
-                  <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Live Encryption</span>
+                  <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Synaptic Stream</span>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="glass rounded-[2.5rem] p-7 space-y-6 shrink-0">
+          <div className="glass rounded-[2.5rem] p-7 space-y-6 shrink-0 border-white/5 shadow-inner">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center"><BarChart3 className="w-4 h-4 mr-3" /> Synaptic Load</span>
-              <span className="text-[9px] font-black text-cyan-400 tracking-widest animate-pulse">STABLE</span>
+              <span className="text-[9px] font-black text-cyan-400 tracking-widest animate-pulse uppercase">Syncing</span>
             </div>
             <div className="flex space-x-2.5 h-10 items-end">
               {[35, 70, 45, 95, 60, 85, 40, 75, 55, 30, 90, 65].map((h, i) => (
@@ -401,10 +418,10 @@ const App: React.FC = () => {
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
           disabled={isInteractionDisabled}
-          className={`w-full py-7 rounded-[2rem] font-black text-xs tracking-[0.4em] uppercase transition-all duration-500 active:scale-[0.96] shadow-2xl group shrink-0 ${
+          className={`w-full py-7 rounded-[2rem] font-black text-xs tracking-[0.4em] uppercase transition-all duration-500 active:scale-[0.96] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group shrink-0 ${
             isSessionActive 
               ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20' 
-              : 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-cyan-600/30 hover:shadow-cyan-500/50'
+              : 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-cyan-600/30 hover:shadow-cyan-500/60'
           } ${isInteractionDisabled ? 'opacity-40 cursor-not-allowed grayscale' : ''}`}
         >
           <span className="flex items-center justify-center">
@@ -415,13 +432,13 @@ const App: React.FC = () => {
       </aside>
 
       {/* MAIN VIEWPORT: Interaction Core */}
-      <main className="flex-1 flex flex-col relative overflow-hidden h-full">
-        {/* Top Navigation / Status Header */}
+      <main className="flex-1 flex flex-col relative overflow-hidden h-full z-10">
+        {/* Top Header Layer - Adaptive Alignment */}
         <header className="px-6 md:px-12 py-8 flex justify-between items-center w-full shrink-0 z-30">
           <div className="flex items-center space-x-6">
-            <div className={`px-6 py-2.5 glass rounded-full flex items-center space-x-4 border-white/5 shadow-xl transition-all ${isSessionActive ? 'ring-2 ring-cyan-500/30' : ''}`}>
+            <div className={`px-6 py-2.5 glass rounded-full flex items-center space-x-4 border-white/5 shadow-2xl transition-all duration-500 ${isSessionActive ? 'ring-2 ring-cyan-500/30 translate-y-1' : ''}`}>
                <div className={`w-2.5 h-2.5 rounded-full ${isSessionActive ? 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]' : 'bg-slate-700 animate-pulse'}`}></div>
-               <span className="text-[11px] font-black text-slate-300 tracking-[0.3em] uppercase">{isSessionActive ? 'Core Sync Active' : 'Standby Protocol'}</span>
+               <span className="text-[11px] font-black text-slate-300 tracking-[0.3em] uppercase">{isSessionActive ? 'Neural Active' : 'Neural Standby'}</span>
             </div>
           </div>
           
@@ -430,66 +447,70 @@ const App: React.FC = () => {
               <div className="text-base font-black text-white tabular-nums tracking-tighter">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em]">Synaptic Pulse</div>
             </div>
-            <div className="w-14 h-14 glass rounded-2xl flex items-center justify-center border-white/5 hover:border-white/20 transition-all cursor-pointer group shadow-inner">
+            <div className="w-14 h-14 glass rounded-2xl flex items-center justify-center border-white/5 hover:border-white/20 transition-all cursor-pointer group shadow-2xl">
                <Terminal className="w-6 h-6 text-slate-500 group-hover:text-cyan-400 transition-colors" />
             </div>
           </div>
         </header>
 
-        {/* Dynamic Alerts Layer */}
+        {/* Floating System Alerts - Center Aligned */}
         <div className="absolute top-24 left-0 right-0 z-40 px-6 md:px-12 flex flex-col items-center pointer-events-none">
           {errorMessage && (
-            <div className="max-w-xl w-full p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-200 text-[11px] font-black uppercase tracking-widest flex items-center space-x-6 shadow-[0_0_50px_rgba(239,68,68,0.1)] animate-in slide-in-from-top-10 pointer-events-auto">
+            <div className="max-w-xl w-full p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-200 text-[11px] font-black uppercase tracking-widest flex items-center space-x-6 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-in slide-in-from-top-10 pointer-events-auto backdrop-blur-3xl">
               <ShieldAlert className="w-6 h-6 text-red-500 shrink-0" />
-              <span className="leading-relaxed">{errorMessage}</span>
-              <button onClick={() => setErrorMessage(null)} className="ml-auto text-red-500/50 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
+              <span className="leading-relaxed flex-1">{errorMessage}</span>
+              <button onClick={() => setErrorMessage(null)} className="p-2 rounded-xl hover:bg-red-500/20 transition-colors"><X className="w-5 h-5 text-red-500/50" /></button>
             </div>
           )}
         </div>
 
-        {/* Central Assistant Stage */}
-        <div className="flex-1 flex flex-col items-center justify-center relative min-h-0 w-full z-10 p-4 overflow-hidden">
+        {/* ASSISTANT STAGE: Perfectly Centered Flexible Workspace */}
+        <div className="flex-1 flex flex-col items-center justify-center relative w-full z-10 px-4 md:px-12 min-h-0">
           {hasApiKey === false ? (
-            <div className="max-w-md w-full p-10 bg-cyan-950/20 border border-cyan-500/20 rounded-[3rem] backdrop-blur-3xl text-center space-y-8 shadow-2xl animate-in fade-in zoom-in-95 duration-700">
+            <div className="max-w-md w-full p-10 bg-slate-900/40 border border-cyan-500/20 rounded-[3rem] backdrop-blur-3xl text-center space-y-8 shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-700 relative">
               <div className="w-24 h-24 rounded-full bg-cyan-500/10 flex items-center justify-center mx-auto border border-cyan-500/20">
                 <Lock className="w-10 h-10 text-cyan-400" />
               </div>
               <div className="space-y-4">
                 <h3 className="text-2xl font-black google-font tracking-tight text-white uppercase">Authentication Required</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed px-4">Initialize your secure synaptic link by selecting a high-bandwidth Gemini API key.</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed px-4">The Synaptic link is encrypted. Initialize your session by selecting a premium Gemini API key.</p>
               </div>
               <button 
                 onClick={handleOpenApiKeyDialog} 
-                className="w-full bg-gradient-to-r from-cyan-600 to-blue-700 text-white py-5 rounded-2xl font-black text-xs tracking-[0.3em] uppercase transition-all shadow-xl hover:shadow-cyan-500/30 hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full bg-gradient-to-r from-cyan-600 to-blue-700 text-white py-5 rounded-2xl font-black text-xs tracking-[0.3em] uppercase transition-all shadow-xl hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98]"
               >
-                Engage Security Core
+                Authenticate Core
               </button>
-              <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">Supports Paid GCP Projects Only</p>
             </div>
           ) : (
-            <div className="relative flex flex-col items-center justify-center group w-full max-w-2xl h-full">
-               <AssistantOrb status={status} />
+            <div className="w-full h-full flex flex-col items-center justify-center relative">
+               {/* Fixed Positioning for the Orb to prevent layout shifts */}
+               <div className={`transform transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${isInteractionDisabled ? 'scale-90 opacity-30 blur-md' : 'scale-100 md:scale-125'}`}>
+                 <AssistantOrb status={status} />
+               </div>
               
               {status === AssistantStatus.IDLE && !isInteractionDisabled && (
-                <button 
-                  onClick={startAssistant}
-                  className="absolute bottom-1/4 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-2xl px-12 py-5 rounded-full flex items-center space-x-5 group/btn active:scale-95 transition-all shadow-2xl hover:shadow-cyan-500/10 animate-bounce"
-                >
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-cyan-400/50 rounded-full blur-[10px] animate-ping"></div>
-                    <Mic className="w-5 h-5 text-cyan-400 relative z-10" />
-                  </div>
-                  <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Initialize Sync</span>
-                </button>
+                <div className="absolute bottom-[18%] md:bottom-[15%] left-0 right-0 flex justify-center animate-in fade-in slide-in-from-bottom-12 duration-1000">
+                  <button 
+                    onClick={startAssistant}
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-3xl px-12 py-5 rounded-full flex items-center space-x-6 group active:scale-95 transition-all shadow-[0_20px_60px_rgba(0,0,0,0.5)] hover:shadow-cyan-500/20 animate-pulse"
+                  >
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-[12px] animate-ping"></div>
+                      <Mic className="w-6 h-6 text-cyan-400 relative z-10" />
+                    </div>
+                    <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Engage Synapse</span>
+                  </button>
+                </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Bottom Terminal / Log Strip */}
-        <div className="w-full max-w-4xl px-6 md:px-12 pb-10 mt-auto z-20 shrink-0">
-          <div className="h-[280px] glass rounded-[3.5rem] p-8 md:p-10 shadow-[0_0_80px_rgba(0,0,0,0.6)] border-white/10 ring-1 ring-white/5 relative overflow-hidden group">
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px] group-hover:opacity-[0.05] transition-opacity"></div>
+        {/* BOTTOM SECTION: Balanced Log Area */}
+        <div className="w-full max-w-5xl px-6 md:px-12 pb-10 mt-auto z-20 shrink-0 mx-auto">
+          <div className="h-[280px] glass rounded-[3.5rem] p-8 md:p-10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] border-white/10 ring-1 ring-white/5 relative overflow-hidden group">
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px] group-hover:opacity-[0.05] transition-opacity duration-1000"></div>
             <NotificationPanel notifications={notifications} />
           </div>
         </div>
