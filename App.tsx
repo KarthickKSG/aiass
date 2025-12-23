@@ -185,7 +185,7 @@ const App: React.FC = () => {
               nextStartTimeRef.current += buffer.duration;
               sourcesRef.current.add(source);
             }
-            if (message.toolCall) {
+            if (message.toolCall?.functionCalls) {
               for (const fc of message.toolCall.functionCalls) {
                 let res = "ok";
                 const args = fc.args as any;
@@ -273,7 +273,7 @@ const App: React.FC = () => {
 
       {/* SIDEBAR: Diagnostics & Visuals */}
       <aside className="z-20 w-full md:w-85 lg:w-96 shrink-0 p-4 md:p-6 flex flex-col space-y-5 glass border-b md:border-b-0 md:border-r border-white/5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-800 flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-white/10">
               <img src="Logo.png" alt="King AI" className="w-9 h-9 object-contain" />
@@ -304,7 +304,7 @@ const App: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto scrollbar-hide space-y-5 flex flex-col">
           {isVisionActive && (
-            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl shrink-0">
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-90" />
               <canvas ref={canvasRef} width="640" height="480" className="hidden" />
               <div className="absolute inset-0 pointer-events-none">
@@ -319,7 +319,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <div className="glass rounded-[2.5rem] p-6 space-y-5">
+          <div className="glass rounded-[2.5rem] p-6 space-y-5 shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center">
                 <BarChart3 className="w-3.5 h-3.5 mr-2" /> Synaptic Load
@@ -341,7 +341,7 @@ const App: React.FC = () => {
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
           disabled={status === AssistantStatus.THINKING}
-          className={`w-full py-6 rounded-[2rem] font-black text-[11px] tracking-[0.5em] uppercase transition-all duration-700 shadow-2xl active:scale-[0.97] group ${
+          className={`w-full py-6 rounded-[2rem] font-black text-[11px] tracking-[0.5em] uppercase transition-all duration-700 shadow-2xl active:scale-[0.97] group shrink-0 ${
             isSessionActive 
               ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20' 
               : 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white shadow-cyan-600/30 hover:shadow-cyan-500/50 hover:scale-[1.02]'
@@ -355,8 +355,8 @@ const App: React.FC = () => {
       </aside>
 
       {/* MAIN VIEWPORT: Assistant & Terminal */}
-      <main className="z-10 flex-1 flex flex-col relative px-4 py-6 md:px-10 md:py-8 overflow-hidden">
-        <header className="flex justify-between items-center mb-6 md:mb-10 px-2">
+      <main className="z-10 flex-1 flex flex-col relative px-4 py-6 md:px-10 md:py-8 overflow-hidden items-center">
+        <header className="flex justify-between items-center mb-6 md:mb-10 w-full max-w-5xl px-2 shrink-0">
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-[0.4em] text-slate-600 uppercase mb-2">Operation Mode</span>
             <div className="flex items-center space-x-3">
@@ -381,20 +381,21 @@ const App: React.FC = () => {
         </header>
 
         {errorMessage && (
-          <div className="mx-auto max-w-lg w-full mb-8 p-5 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-200 text-[10px] font-black uppercase tracking-widest flex items-center space-x-5 shadow-2xl animate-in slide-in-from-top-6">
+          <div className="mx-auto max-w-lg w-full mb-8 p-5 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-200 text-[10px] font-black uppercase tracking-widest flex items-center space-x-5 shadow-2xl animate-in slide-in-from-top-6 shrink-0">
             <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
             <span className="leading-relaxed">{errorMessage}</span>
           </div>
         )}
 
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0 relative">
-          <div className="scale-110 md:scale-125">
+        {/* Central Assistant Orb - Precisely Centered */}
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 relative w-full">
+          <div className="transform scale-110 md:scale-125 transition-transform duration-700">
             <AssistantOrb status={status} />
           </div>
         </div>
 
-        {/* Console / Notification Area */}
-        <div className="mx-auto w-full max-w-2xl mt-8">
+        {/* Console / Notification Area - Balanced at the bottom */}
+        <div className="w-full max-w-2xl mt-8 shrink-0">
           <div className="h-[260px] glass rounded-[3rem] p-6 shadow-2xl border-white/10 ring-1 ring-white/5 relative overflow-hidden">
             {/* Terminal Backdrop Pattern */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
