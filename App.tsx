@@ -7,13 +7,16 @@ import { createBlob, decode, decodeAudioData } from './utils/audioUtils';
 import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
-import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink, Settings, Save, CheckCircle2, Trash2 } from 'lucide-react';
+import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink, Settings, Save, CheckCircle2, Trash2, Lock } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssistantStatus>(AssistantStatus.IDLE);
   const [showSettings, setShowSettings] = useState(false);
-  const [manualKey, setManualKey] = useState<string>(localStorage.getItem('king_api_key') || '');
-  const [keyApplied, setKeyApplied] = useState<boolean>(!!localStorage.getItem('king_api_key'));
+  
+  // State for the key currently being typed
+  const [editingKey, setEditingKey] = useState<string>(localStorage.getItem('king_api_key') || '');
+  // State to confirm if the current stored key is what we're using
+  const [isKeyApplied, setIsKeyApplied] = useState<boolean>(!!localStorage.getItem('king_api_key'));
   
   const [deviceState, setDeviceState] = useState<DeviceState>({
     wifi: true,
@@ -26,6 +29,7 @@ const App: React.FC = () => {
     brightness: 80,
     volume: 50,
   });
+  
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: '1',
@@ -35,6 +39,7 @@ const App: React.FC = () => {
       type: 'alert'
     }
   ]);
+  
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [isVisionActive, setIsVisionActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -65,19 +70,19 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSaveManualKey = () => {
-    if (manualKey.trim()) {
-      localStorage.setItem('king_api_key', manualKey.trim());
-      setKeyApplied(true);
-      addNotification('System', 'Manual API key applied successfully.', 'alert');
+  const handleSaveKey = () => {
+    if (editingKey.trim()) {
+      localStorage.setItem('king_api_key', editingKey.trim());
+      setIsKeyApplied(true);
+      addNotification('System', 'Manual API key secured and active.', 'alert');
     }
   };
 
-  const handleClearManualKey = () => {
+  const handleClearKey = () => {
     localStorage.removeItem('king_api_key');
-    setManualKey('');
-    setKeyApplied(false);
-    addNotification('System', 'Manual API key cleared. Using system defaults.', 'alert');
+    setEditingKey('');
+    setIsKeyApplied(false);
+    addNotification('System', 'Manual key removed. Reverting to system link.', 'alert');
   };
 
   const addNotification = (sender: string, content: string, type: 'message' | 'alert' | 'schedule') => {
@@ -183,7 +188,7 @@ const App: React.FC = () => {
     setErrorMessage(null);
     
     // Determine active API key
-    const activeKey = manualKey || process.env.API_KEY;
+    const activeKey = localStorage.getItem('king_api_key') || process.env.API_KEY;
 
     if (!activeKey && window.aistudio) {
       const hasKey = await window.aistudio.hasSelectedApiKey();
@@ -196,7 +201,8 @@ const App: React.FC = () => {
     try {
       await initAudio();
       
-      const ai = new GoogleGenAI({ apiKey: manualKey || process.env.API_KEY });
+      // Use the key from local storage if available, otherwise fallback to system key
+      const ai = new GoogleGenAI({ apiKey: activeKey });
       
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -249,9 +255,9 @@ const App: React.FC = () => {
             setStatus(AssistantStatus.ERROR);
             const msg = (e as any).message || "";
             if (msg.includes("Requested entity was not found")) {
-              setErrorMessage("Key invalid or not found. Update in Settings.");
+              setErrorMessage("Key invalid. Check project status or re-enter key.");
             } else {
-              setErrorMessage("Connection failed. Check network.");
+              setErrorMessage("Connection failed. Protocol sync error.");
             }
           },
           onclose: () => {
@@ -269,7 +275,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (err: any) {
       setStatus(AssistantStatus.ERROR);
-      setErrorMessage("Hardware error: Check permissions.");
+      setErrorMessage("Hardware error: Kernel link failed.");
     }
   };
 
@@ -283,72 +289,101 @@ const App: React.FC = () => {
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select">
       {showSettings && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
-          <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl p-8 shadow-2xl">
+          <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black google-font tracking-tight">Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white transition-colors">
+              <h2 className="text-xl font-black google-font tracking-tight">Security & Link</h2>
+              <button onClick={() => setShowSettings(false)} className="p-2 text-slate-500 hover:text-white transition-colors">
                 <ShieldAlert className="w-6 h-6 rotate-45" />
               </button>
             </div>
             
             <div className="space-y-6">
-              {/* Connection Section */}
+              {/* Manual Key Input */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Connection Configuration</h3>
+                <div className="flex justify-between items-center px-1">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Manual API Entry</h3>
+                  {isKeyApplied && (
+                    <span className="text-[9px] font-black text-green-400 uppercase tracking-tighter flex items-center space-x-1">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      <span>Applied</span>
+                    </span>
+                  )}
+                </div>
                 
                 <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
+                    <Lock className="w-4 h-4" />
+                  </div>
                   <input 
                     type="password"
-                    value={manualKey}
-                    onChange={(e) => setManualKey(e.target.value)}
-                    placeholder="Enter manual Gemini key..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 text-sm font-medium focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-600"
+                    value={editingKey}
+                    onChange={(e) => {
+                      setEditingKey(e.target.value);
+                      if (isKeyApplied) setIsKeyApplied(false); // Invalidate applied status if user starts typing
+                    }}
+                    placeholder="Paste Gemini API Key..."
+                    className={`w-full bg-white/5 border ${isKeyApplied ? 'border-green-500/30 bg-green-500/5' : 'border-white/10 focus:border-blue-500/50'} rounded-2xl pl-11 pr-14 py-4 text-sm font-medium focus:outline-none transition-all placeholder:text-slate-700`}
                   />
-                  <div className="absolute right-2 top-2 flex space-x-1">
-                    {keyApplied ? (
-                      <button onClick={handleClearManualKey} className="p-2 text-red-400 hover:bg-red-400/10 rounded-xl transition-colors">
-                        <Trash2 className="w-4 h-4" />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
+                    {isKeyApplied ? (
+                      <button 
+                        onClick={handleClearKey} 
+                        className="p-2.5 text-red-400 hover:bg-red-400/10 rounded-xl transition-colors group/btn"
+                        title="Clear Manual Key"
+                      >
+                        <Trash2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
                       </button>
                     ) : (
-                      <button onClick={handleSaveManualKey} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-xl transition-colors">
-                        <Save className="w-4 h-4" />
+                      <button 
+                        onClick={handleSaveKey} 
+                        disabled={!editingKey.trim()}
+                        className="p-2.5 text-blue-400 hover:bg-blue-400/10 disabled:opacity-30 rounded-xl transition-colors group/btn"
+                        title="Save Manual Key"
+                      >
+                        <Save className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
                       </button>
                     )}
                   </div>
                 </div>
+              </div>
 
+              {/* System Link Option */}
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Cloud Integration</h3>
                 <button 
                   onClick={handleLinkKey}
                   className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
                 >
                   <div className="flex items-center space-x-3">
                     <Key className="w-5 h-5 text-indigo-400" />
-                    <span className="text-sm font-bold text-slate-200">AI Studio Link</span>
+                    <span className="text-sm font-bold text-slate-200">AI Studio Managed Link</span>
                   </div>
                   <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" />
                 </button>
               </div>
               
-              <div className="flex items-center justify-between p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle2 className={`w-5 h-5 ${keyApplied ? 'text-green-400' : 'text-blue-400'}`} />
-                  <span className="text-xs font-bold text-slate-300">
-                    {keyApplied ? 'Manual Key Active' : 'System Key Active'}
-                  </span>
+              <div className="p-4 bg-slate-950/40 border border-white/5 rounded-2xl">
+                <div className="flex items-center space-x-3 mb-2">
+                   <div className={`w-2 h-2 rounded-full ${isKeyApplied ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-blue-500 shadow-[0_0_8px_#3b82f6] animate-pulse'}`}></div>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                     Primary Link: {isKeyApplied ? 'Manual Override' : 'System Default'}
+                   </span>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                <p className="text-[9px] text-slate-600 font-bold leading-relaxed px-1">
+                  Manual keys take precedence over system project links. Clear manual entry to revert to AI Studio settings.
+                </p>
               </div>
 
-              <div className="pt-6 border-t border-white/5 flex flex-col items-center">
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">King Core v4.3.0-Stable</p>
+              <div className="pt-4 border-t border-white/5 flex flex-col items-center">
+                <p className="text-[10px] text-slate-700 font-black uppercase tracking-[0.2em]">King Core v4.3.2-LTS</p>
                 <a 
                   href="https://ai.google.dev/gemini-api/docs/billing" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="mt-2 text-[9px] text-blue-500/60 hover:text-blue-400 font-bold uppercase tracking-widest flex items-center space-x-1"
+                  className="mt-3 px-4 py-1.5 rounded-full bg-white/5 text-[9px] text-slate-400 hover:text-white border border-white/5 font-bold uppercase tracking-widest flex items-center space-x-2 transition-all"
                 >
-                  <span>Billing Documentation</span>
-                  <ExternalLink className="w-2 h-2" />
+                  <span>Verify Billing</span>
+                  <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
             </div>
@@ -356,9 +391,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Background Decor */}
+      {/* Background Atmosphere */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-colors duration-1000 ${isSessionActive ? 'bg-blue-900/20' : 'bg-slate-900/10'}`}></div>
+        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-all duration-1000 ${isSessionActive ? 'bg-blue-900/20' : 'bg-slate-900/10'}`}></div>
       </div>
 
       <aside className="z-20 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 bg-slate-950/60 backdrop-blur-3xl border-b md:border-b-0 md:border-r border-white/5">
@@ -380,7 +415,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg font-black google-font leading-tight tracking-tighter">KING AI</h1>
-              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em]">Vision Module v1.2</p>
+              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em]">Neural Engine v1.2</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -408,7 +443,7 @@ const App: React.FC = () => {
               <canvas ref={canvasRef} width="640" height="480" className="hidden" />
               <div className="absolute top-3 left-3 flex items-center space-x-1.5 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_#ef4444]"></div>
-                <span className="text-[8px] font-black text-white uppercase tracking-tighter">Vision Active</span>
+                <span className="text-[8px] font-black text-white uppercase tracking-tighter">Stream Active</span>
               </div>
             </div>
           )}
@@ -440,7 +475,7 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-2">
             <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5 flex items-center space-x-2">
                <div className="w-1 h-1 bg-blue-400 rounded-full"></div>
-               <span className="text-[10px] font-black text-slate-400 tracking-widest">QUANTUM LINK</span>
+               <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Kernel Active</span>
             </div>
           </div>
         </header>
