@@ -8,7 +8,7 @@ import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
 import { 
-  ShieldAlert, Cpu, Settings, Camera, Zap, Terminal, BrainCircuit, Activity, BarChart3, X
+  ShieldAlert, Cpu, Settings, Camera, Zap, Terminal, BrainCircuit, Activity, BarChart3, X, Mic, MicOff, Info
 } from 'lucide-react';
 
 const FRAME_RATE = 1;
@@ -76,13 +76,18 @@ const App: React.FC = () => {
   };
 
   const initAudio = async () => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-      outputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-    }
-    if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
-    if (!streamRef.current) {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        outputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+      }
+      if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+      if (!streamRef.current) {
+        streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+    } catch (err) {
+      setErrorMessage("Microphone access denied. Please check permissions.");
+      throw err;
     }
   };
 
@@ -124,9 +129,18 @@ const App: React.FC = () => {
     setIsVisionActive(false);
   };
 
+  const handleApiKeySelection = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+    } else {
+      setErrorMessage("API Selection utility is not available in this environment.");
+    }
+  };
+
   const startAssistant = async () => {
     setErrorMessage(null);
 
+    // Initial check for API key
     if (window.aistudio && !await window.aistudio.hasSelectedApiKey()) {
       await window.aistudio.openSelectKey();
     }
@@ -134,6 +148,8 @@ const App: React.FC = () => {
     setStatus(AssistantStatus.THINKING);
     try {
       await initAudio();
+      
+      // Re-initialize for every connection to ensure latest key is used
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const config: any = {
@@ -200,14 +216,23 @@ const App: React.FC = () => {
               nextStartTimeRef.current = 0;
             }
           },
-          onerror: () => setErrorMessage("Synaptic drift detected. Reconnecting..."),
+          onerror: (e) => {
+            console.error(e);
+            if (e.message?.includes("Requested entity was not found")) {
+              setErrorMessage("API Key expired or project not found. Please re-select your key.");
+              handleApiKeySelection();
+            } else {
+              setErrorMessage("Synaptic drift detected. Reconnecting...");
+            }
+          },
           onclose: () => { setIsSessionActive(false); setStatus(AssistantStatus.IDLE); }
         },
         config
       });
       sessionPromiseRef.current = sessionPromise;
-    } catch (err) {
+    } catch (err: any) {
       setStatus(AssistantStatus.ERROR);
+      setErrorMessage(err.message || "Failed to initialize synaptic link.");
     }
   };
 
@@ -226,7 +251,7 @@ const App: React.FC = () => {
       </div>
 
       {showSettings && (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
           <div className="glass w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-white/10 ring-1 ring-cyan-500/20">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-xl font-black google-font tracking-tight flex items-center">
@@ -257,13 +282,35 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              <div className="space-y-4">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Authentication</label>
+                <div className="space-y-3">
+                  <button 
+                    onClick={handleApiKeySelection}
+                    className="w-full py-4 rounded-2xl bg-cyan-600/10 border border-cyan-500/30 text-cyan-400 font-black text-[10px] tracking-widest uppercase hover:bg-cyan-600/20 transition-all flex items-center justify-center space-x-3"
+                  >
+                    <Cpu className="w-4 h-4" />
+                    <span>Select Core API Key</span>
+                  </button>
+                  <a 
+                    href="https://ai.google.dev/gemini-api/docs/billing" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1 hover:text-slate-400 transition-colors"
+                  >
+                    <Info className="w-3 h-3" />
+                    <span>View Billing Documentation</span>
+                  </a>
+                </div>
+              </div>
+
               <div className="p-5 bg-white/5 border border-white/10 rounded-3xl flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Core Integrity</span>
                   <span className="text-[11px] font-bold text-cyan-400">OPTIMIZED 8.4</span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
-                  <Cpu className="w-6 h-6 text-cyan-400 animate-pulse" />
+                  <Activity className="w-6 h-6 text-cyan-400 animate-pulse" />
                 </div>
               </div>
             </div>
@@ -276,7 +323,7 @@ const App: React.FC = () => {
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-800 flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-white/10">
-              <img src="Logo.png" alt="King AI" className="w-9 h-9 object-contain" />
+              <img src="https://cdn-icons-png.flaticon.com/512/2593/2593635.png" alt="King AI" className="w-9 h-9 object-contain" />
             </div>
             <div>
               <h1 className="text-lg font-black google-font tracking-tighter">KING AI</h1>
@@ -348,8 +395,8 @@ const App: React.FC = () => {
           }`}
         >
           <span className="flex items-center justify-center">
-            <Zap className={`w-4 h-4 mr-3 transition-transform ${isSessionActive ? 'rotate-12' : 'group-hover:scale-110'}`} />
-            {isSessionActive ? 'Terminate Link' : 'Engage King'}
+            {isSessionActive ? <MicOff className="w-4 h-4 mr-3" /> : <Mic className="w-4 h-4 mr-3" />}
+            {isSessionActive ? 'Disconnect Core' : 'Initialize Voice Input'}
           </span>
         </button>
       </aside>
@@ -388,10 +435,26 @@ const App: React.FC = () => {
         )}
 
         {/* Central Assistant Orb - Precisely Centered */}
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0 relative w-full">
-          <div className="transform scale-110 md:scale-125 transition-transform duration-700">
-            <AssistantOrb status={status} />
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 relative w-full group">
+          <button 
+            onClick={isSessionActive ? stopAssistant : startAssistant}
+            disabled={status === AssistantStatus.THINKING}
+            className={`relative transform transition-all duration-700 hover:scale-105 active:scale-95 ${status === AssistantStatus.THINKING ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+          >
+            <div className="absolute -inset-10 bg-cyan-400/5 rounded-full blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="scale-110 md:scale-125">
+              <AssistantOrb status={status} />
+            </div>
+            
+            {status === AssistantStatus.IDLE && (
+               <div className="absolute inset-0 flex items-center justify-center">
+                 <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center space-x-2 animate-bounce">
+                    <Mic className="w-4 h-4 text-cyan-400" />
+                    <span className="text-[8px] font-black text-white uppercase tracking-widest">Tap to Speak</span>
+                 </div>
+               </div>
+            )}
+          </button>
         </div>
 
         {/* Console / Notification Area - Balanced at the bottom */}
