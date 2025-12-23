@@ -8,7 +8,7 @@ import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
 import { 
-  ShieldAlert, Cpu, Settings, Camera, Zap, Terminal, BrainCircuit, Activity, BarChart3, X, Mic, MicOff, Info, Lock, ChevronRight
+  ShieldAlert, Cpu, Settings, Camera, Zap, Terminal, BrainCircuit, Activity, BarChart3, X, Mic, MicOff, Info, Lock, ChevronRight, History
 } from 'lucide-react';
 
 const FRAME_RATE = 1;
@@ -34,11 +34,18 @@ const App: React.FC = () => {
   
   const [notifications, setNotifications] = useState<Notification[]>([
     {
-      id: '1',
-      sender: 'KING CORE',
-      content: 'Quantum protocols established. Ready for synaptic transmission.',
+      id: 'v2.4',
+      sender: 'SYSTEM UPDATE',
+      content: 'Synaptic Core v2.4 initialized. All protocols (Vision, Device, Logic) operational.',
       timestamp: new Date(),
       type: 'alert'
+    },
+    {
+      id: 'v2.3',
+      sender: 'KERNEL LOG',
+      content: 'Device control tools successfully mapped to system hardware.',
+      timestamp: new Date(Date.now() - 1000 * 60 * 5),
+      type: 'schedule'
     }
   ]);
   
@@ -80,7 +87,7 @@ const App: React.FC = () => {
         setHasApiKey(true);
         setErrorMessage(null);
       } catch (err) {
-        setErrorMessage("Authentication gateway failed to respond.");
+        setErrorMessage("Authentication failure.");
       }
     }
   };
@@ -93,7 +100,7 @@ const App: React.FC = () => {
       timestamp: new Date(),
       type
     };
-    setNotifications(prev => [newNotif, ...prev].slice(0, 10));
+    setNotifications(prev => [newNotif, ...prev].slice(0, 15));
   };
 
   const initAudio = async () => {
@@ -107,7 +114,7 @@ const App: React.FC = () => {
         streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
     } catch (err) {
-      setErrorMessage("Microphone access is restricted. Check system permissions.");
+      setErrorMessage("Microphone access is restricted.");
       throw err;
     }
   };
@@ -120,6 +127,7 @@ const App: React.FC = () => {
       videoStreamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setIsVisionActive(true);
+      addNotification('SYSTEM', 'Visual sensors online. Multimodal bridge active.', 'alert');
       
       visionIntervalRef.current = window.setInterval(() => {
         if (videoRef.current && canvasRef.current && sessionPromiseRef.current) {
@@ -140,7 +148,7 @@ const App: React.FC = () => {
         }
       }, 1000 / FRAME_RATE);
     } catch (err) {
-      setErrorMessage("Visual sensors offline.");
+      setErrorMessage("Optical sensors failing.");
     }
   };
 
@@ -152,7 +160,6 @@ const App: React.FC = () => {
 
   const startAssistant = async () => {
     setErrorMessage(null);
-
     if (window.aistudio && !await window.aistudio.hasSelectedApiKey()) {
       await handleOpenApiKeyDialog();
     }
@@ -164,7 +171,7 @@ const App: React.FC = () => {
       
       const config: any = {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: SYSTEM_INSTRUCTION + `\nCurrently in ${mode} mode. Adjust complexity accordingly.`,
+        systemInstruction: SYSTEM_INSTRUCTION + `\nCurrently in v2.4 ${mode} mode. Status: Operational.`,
         tools: [{ functionDeclarations: DEVICE_TOOLS }],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
       };
@@ -179,7 +186,7 @@ const App: React.FC = () => {
           onopen: () => {
             setIsSessionActive(true);
             setStatus(AssistantStatus.LISTENING);
-            addNotification('SYSTEM', 'Neural link established.', 'alert');
+            addNotification('KING', 'Link active. Listening for synaptic input.', 'message');
             
             if (audioContextRef.current && streamRef.current) {
               const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
@@ -215,8 +222,14 @@ const App: React.FC = () => {
               for (const fc of message.toolCall.functionCalls) {
                 let res = "ok";
                 const args = fc.args as any;
-                if (fc.name === 'toggle_device_setting') setDeviceState(p => ({ ...p, [args.setting]: args.value }));
-                if (fc.name === 'set_device_value') setDeviceState(p => ({ ...p, [args.setting]: args.value }));
+                if (fc.name === 'toggle_device_setting') {
+                  setDeviceState(p => ({ ...p, [args.setting]: args.value }));
+                  addNotification('HARDWARE', `Toggled ${args.setting} to ${args.value}`, 'schedule');
+                }
+                if (fc.name === 'set_device_value') {
+                  setDeviceState(p => ({ ...p, [args.setting]: args.value }));
+                  addNotification('HARDWARE', `Set ${args.setting} level to ${args.value}%`, 'schedule');
+                }
                 sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: { result: res } } }));
               }
             }
@@ -227,12 +240,8 @@ const App: React.FC = () => {
             }
           },
           onerror: (e: any) => {
-            if (e?.message?.includes('not found')) {
-              setHasApiKey(false);
-              setErrorMessage("API Key handshake failed. Please re-authenticate.");
-            } else {
-              setErrorMessage("Synaptic drift detected. Re-syncing link...");
-            }
+            setErrorMessage("Synaptic drift detected. Re-establishing link...");
+            if (e?.message?.includes('not found')) setHasApiKey(false);
           },
           onclose: () => { setIsSessionActive(false); setStatus(AssistantStatus.IDLE); }
         },
@@ -241,7 +250,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (err: any) {
       setStatus(AssistantStatus.ERROR);
-      setErrorMessage(err.message || "Failed to establish cognitive link.");
+      setErrorMessage("Failed to establish cognitive link.");
     }
   };
 
@@ -256,27 +265,24 @@ const App: React.FC = () => {
   return (
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select selection:bg-cyan-500/30">
       
-      {/* GLOBAL NEURAL BACKGROUND SYSTEM - FIXED POSITIONING */}
+      {/* 1. LAYERED NEURAL BACKGROUND SYSTEM */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* Deep Radiant Gradient */}
-        <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(15,23,42,0.8)_0%,_#020617_100%)] transition-all duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-60'}`}></div>
+        {/* Layer A: Base Gradient */}
+        <div className={`absolute inset-0 bg-[radial-gradient(circle_at_center,_#0f172a_0%,_#020617_100%)] transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-60'}`}></div>
         
-        {/* Responsive Atmospheric Pulse */}
-        <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-950/20 via-transparent to-blue-950/20 transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-20'}`}></div>
-
-        {/* Precision Synaptic Grid - Aligned to Viewport Center */}
+        {/* Layer B: Synaptic Grid - Perfectly Aligned */}
         <div 
-          className="absolute inset-0 opacity-[0.03] transition-all duration-1000 ease-out"
+          className="absolute inset-0 opacity-[0.03] transition-transform duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]"
           style={{ 
-            backgroundImage: `radial-gradient(circle at 1px 1px, #22d3ee 1px, transparent 1px)`,
+            backgroundImage: `radial-gradient(circle at center, #22d3ee 0.5px, transparent 0.5px)`,
             backgroundSize: '40px 40px',
             backgroundPosition: 'center center',
-            transform: isSessionActive ? 'scale(1.05) translateZ(0)' : 'scale(1) translateZ(0)'
+            transform: isSessionActive ? 'scale(1.1)' : 'scale(1)'
           }}
         ></div>
         
-        {/* Dynamic Focus Bloom */}
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] bg-[radial-gradient(circle_at_center,_rgba(34,211,238,0.04)_0%,_transparent_50%)] transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-0'}`}></div>
+        {/* Layer C: Focal Halo Glow (Centered behind Orb) */}
+        <div className={`absolute top-1/2 left-1/2 md:left-[calc(50%+200px)] -translate-x-1/2 -translate-y-1/2 w-[120vw] h-[120vw] bg-[radial-gradient(circle_at_center,_rgba(34,211,238,0.04)_0%,_transparent_60%)] transition-opacity duration-1000 ${isSessionActive ? 'opacity-100' : 'opacity-0'}`}></div>
       </div>
 
       {showSettings && (
@@ -286,9 +292,9 @@ const App: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-black google-font tracking-tight flex items-center">
                   <BrainCircuit className="w-8 h-8 mr-4 text-cyan-400" />
-                  Kernel Control
+                  Kernel v2.4
                 </h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Core System Settings</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Synaptic Core Preferences</p>
               </div>
               <button 
                 onClick={() => setShowSettings(false)} 
@@ -300,7 +306,7 @@ const App: React.FC = () => {
             
             <div className="space-y-10">
               <div className="space-y-4">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Synaptic Processing Mode</label>
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Processing Protocol</label>
                 <div className="grid grid-cols-3 gap-3">
                   {Object.values(AssistantMode).map(m => (
                     <button 
@@ -315,48 +321,45 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Security & Authentication</label>
-                <div className="space-y-4">
-                  <button 
-                    onClick={handleOpenApiKeyDialog}
-                    className="group w-full p-6 rounded-3xl bg-cyan-600/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-between hover:bg-cyan-600/20 transition-all active:scale-[0.98]"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <Cpu className="w-6 h-6" />
-                      <div className="text-left">
-                        <span className="text-[11px] font-black uppercase tracking-widest block">Update API Key</span>
-                        <span className="text-[8px] font-bold text-cyan-400/60 uppercase">AES-256 Encrypted Storage</span>
-                      </div>
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Neural History</label>
+                <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] flex flex-col space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 text-cyan-400">
+                      <History className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Version History</span>
                     </div>
-                    <ChevronRight className="w-5 h-5 opacity-40 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <a 
-                    href="https://ai.google.dev/gemini-api/docs/billing" 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="flex items-center space-x-3 text-[9px] font-bold text-slate-500 uppercase tracking-widest px-2 hover:text-cyan-400 transition-colors"
-                  >
-                    <Info className="w-4 h-4" />
-                    <span>View Cloud Billing Documentation</span>
-                  </a>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase">v2.4 (Latest)</span>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[8px] text-slate-500 font-bold uppercase">v2.1 Base Voice Link</p>
+                    <p className="text-[8px] text-slate-500 font-bold uppercase">v2.2 Vision/Multimodal Module</p>
+                    <p className="text-[8px] text-slate-500 font-bold uppercase">v2.3 hardware Tool Integration</p>
+                    <p className="text-[8px] text-cyan-400 font-black uppercase">v2.4 Synaptic Core (Active)</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">System Health</span>
-                  <span className="text-xs font-bold text-cyan-400 uppercase">Integrity Nominal</span>
-                </div>
-                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-                  <Activity className="w-7 h-7 text-cyan-400 animate-pulse" />
-                </div>
+              <div className="space-y-4">
+                <button 
+                  onClick={handleOpenApiKeyDialog}
+                  className="group w-full p-6 rounded-3xl bg-cyan-600/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-between hover:bg-cyan-600/20 transition-all"
+                >
+                  <div className="flex items-center space-x-4">
+                    <Cpu className="w-6 h-6" />
+                    <div className="text-left">
+                      <span className="text-[11px] font-black uppercase tracking-widest block">Update API Key</span>
+                      <span className="text-[8px] font-bold text-cyan-400/60 uppercase">AES-256 Storage</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 opacity-40 group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* SIDEBAR: Command Center Diagnostics */}
+      {/* 2. SIDEBAR: DIAGNOSTICS & SYSTEM DASHBOARD */}
       <aside className="z-20 w-full md:w-[400px] shrink-0 p-4 md:p-8 flex flex-col space-y-6 glass border-b md:border-b-0 md:border-r border-white/10 max-h-[45dvh] md:max-h-full overflow-y-auto scrollbar-hide shadow-2xl relative">
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-4">
@@ -365,7 +368,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black google-font tracking-tighter">KING AI</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Neural Node v2.5</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Synaptic Node v2.4</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -394,7 +397,7 @@ const App: React.FC = () => {
                 <div className="absolute top-4 left-4 right-4 h-[1px] bg-cyan-400/30 animate-scan"></div>
                 <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                   <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
-                  <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Synaptic Stream</span>
+                  <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Live Feed: active</span>
                 </div>
               </div>
             </div>
@@ -402,8 +405,8 @@ const App: React.FC = () => {
 
           <div className="glass rounded-[2.5rem] p-7 space-y-6 shrink-0 border-white/5 shadow-inner">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center"><BarChart3 className="w-4 h-4 mr-3" /> Synaptic Load</span>
-              <span className="text-[9px] font-black text-cyan-400 tracking-widest animate-pulse uppercase">Syncing</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center"><BarChart3 className="w-4 h-4 mr-3" /> Synaptic Pulse</span>
+              <span className="text-[9px] font-black text-cyan-400 tracking-widest animate-pulse uppercase">Syncing...</span>
             </div>
             <div className="flex space-x-2.5 h-10 items-end">
               {[35, 70, 45, 95, 60, 85, 40, 75, 55, 30, 90, 65].map((h, i) => (
@@ -418,7 +421,7 @@ const App: React.FC = () => {
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
           disabled={isInteractionDisabled}
-          className={`w-full py-7 rounded-[2rem] font-black text-xs tracking-[0.4em] uppercase transition-all duration-500 active:scale-[0.96] shadow-[0_20px_50px_rgba(0,0,0,0.3)] group shrink-0 ${
+          className={`w-full py-7 rounded-[2rem] font-black text-xs tracking-[0.4em] uppercase transition-all duration-500 active:scale-[0.96] shadow-[0_20px_50px_rgba(0,0,0,0.4)] group shrink-0 ${
             isSessionActive 
               ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20' 
               : 'bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-cyan-600/30 hover:shadow-cyan-500/60'
@@ -426,14 +429,14 @@ const App: React.FC = () => {
         >
           <span className="flex items-center justify-center">
             {isSessionActive ? <MicOff className="w-5 h-5 mr-4" /> : <Mic className="w-5 h-5 mr-4 group-hover:scale-110 transition-transform" />}
-            {status === AssistantStatus.THINKING ? 'THINKING...' : status === AssistantStatus.SPEAKING ? 'SPEAKING...' : isSessionActive ? 'Sever Link' : 'Initialize Command'}
+            {status === AssistantStatus.THINKING ? 'THINKING...' : status === AssistantStatus.SPEAKING ? 'SPEAKING...' : isSessionActive ? 'Disconnect Link' : 'Initialize Synapse'}
           </span>
         </button>
       </aside>
 
-      {/* MAIN VIEWPORT: Interaction Core */}
+      {/* 3. MAIN INTERACTION CORE - PERFECTLY CENTERED */}
       <main className="flex-1 flex flex-col relative overflow-hidden h-full z-10">
-        {/* Top Header Layer - Adaptive Alignment */}
+        {/* Top Floating Header */}
         <header className="px-6 md:px-12 py-8 flex justify-between items-center w-full shrink-0 z-30">
           <div className="flex items-center space-x-6">
             <div className={`px-6 py-2.5 glass rounded-full flex items-center space-x-4 border-white/5 shadow-2xl transition-all duration-500 ${isSessionActive ? 'ring-2 ring-cyan-500/30 translate-y-1' : ''}`}>
@@ -445,7 +448,7 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-8">
             <div className="text-right hidden sm:block">
               <div className="text-base font-black text-white tabular-nums tracking-tighter">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-              <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em]">Synaptic Pulse</div>
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em]">Kernel Time</div>
             </div>
             <div className="w-14 h-14 glass rounded-2xl flex items-center justify-center border-white/5 hover:border-white/20 transition-all cursor-pointer group shadow-2xl">
                <Terminal className="w-6 h-6 text-slate-500 group-hover:text-cyan-400 transition-colors" />
@@ -453,10 +456,10 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Floating System Alerts - Center Aligned */}
+        {/* Floating Error Alerts */}
         <div className="absolute top-24 left-0 right-0 z-40 px-6 md:px-12 flex flex-col items-center pointer-events-none">
           {errorMessage && (
-            <div className="max-w-xl w-full p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-200 text-[11px] font-black uppercase tracking-widest flex items-center space-x-6 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-in slide-in-from-top-10 pointer-events-auto backdrop-blur-3xl">
+            <div className="max-w-xl w-full p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-red-200 text-[11px] font-black uppercase tracking-widest flex items-center space-x-6 shadow-2xl animate-in slide-in-from-top-10 pointer-events-auto backdrop-blur-3xl">
               <ShieldAlert className="w-6 h-6 text-red-500 shrink-0" />
               <span className="leading-relaxed flex-1">{errorMessage}</span>
               <button onClick={() => setErrorMessage(null)} className="p-2 rounded-xl hover:bg-red-500/20 transition-colors"><X className="w-5 h-5 text-red-500/50" /></button>
@@ -464,28 +467,27 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* ASSISTANT STAGE: Perfectly Centered Flexible Workspace */}
+        {/* CENTER STAGE: ORB FOCUS */}
         <div className="flex-1 flex flex-col items-center justify-center relative w-full z-10 px-4 md:px-12 min-h-0">
           {hasApiKey === false ? (
-            <div className="max-w-md w-full p-10 bg-slate-900/40 border border-cyan-500/20 rounded-[3rem] backdrop-blur-3xl text-center space-y-8 shadow-[0_40px_80px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-700 relative">
+            <div className="max-w-md w-full p-10 bg-slate-900/40 border border-cyan-500/20 rounded-[3rem] backdrop-blur-3xl text-center space-y-8 shadow-2xl animate-in fade-in zoom-in-95 duration-700">
               <div className="w-24 h-24 rounded-full bg-cyan-500/10 flex items-center justify-center mx-auto border border-cyan-500/20">
                 <Lock className="w-10 h-10 text-cyan-400" />
               </div>
               <div className="space-y-4">
                 <h3 className="text-2xl font-black google-font tracking-tight text-white uppercase">Authentication Required</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed px-4">The Synaptic link is encrypted. Initialize your session by selecting a premium Gemini API key.</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed px-4">Initialize secure session core v2.4 by selecting a valid Gemini API key.</p>
               </div>
               <button 
                 onClick={handleOpenApiKeyDialog} 
                 className="w-full bg-gradient-to-r from-cyan-600 to-blue-700 text-white py-5 rounded-2xl font-black text-xs tracking-[0.3em] uppercase transition-all shadow-xl hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98]"
               >
-                Authenticate Core
+                Engage Core
               </button>
             </div>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center relative">
-               {/* Fixed Positioning for the Orb to prevent layout shifts */}
-               <div className={`transform transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${isInteractionDisabled ? 'scale-90 opacity-30 blur-md' : 'scale-100 md:scale-125'}`}>
+               <div className={`transform transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${isInteractionDisabled ? 'scale-90 opacity-40 blur-lg' : 'scale-100 md:scale-125'}`}>
                  <AssistantOrb status={status} />
                </div>
               
@@ -499,7 +501,7 @@ const App: React.FC = () => {
                       <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-[12px] animate-ping"></div>
                       <Mic className="w-6 h-6 text-cyan-400 relative z-10" />
                     </div>
-                    <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Engage Synapse</span>
+                    <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Activate v2.4</span>
                   </button>
                 </div>
               )}
@@ -507,7 +509,7 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* BOTTOM SECTION: Balanced Log Area */}
+        {/* LOG SECTION: Synaptic Terminal */}
         <div className="w-full max-w-5xl px-6 md:px-12 pb-10 mt-auto z-20 shrink-0 mx-auto">
           <div className="h-[280px] glass rounded-[3.5rem] p-8 md:p-10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] border-white/10 ring-1 ring-white/5 relative overflow-hidden group">
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px] group-hover:opacity-[0.05] transition-opacity duration-1000"></div>
