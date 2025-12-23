@@ -1,6 +1,6 @@
 {
-  "name": "King AI - Premier Assistant",
-  "description": "An advanced, highly efficient, and privacy-respecting voice assistant powered by Gemini. Features real-time voice interaction, smart device controls, and a sophisticated high-end dashboard interface.",
+  "name": "King AI - Core Assistant v1.2",
+  "description": "Enterprise-grade AI Voice Assistant powered by Gemini. Version 1.2 focuses on robust Core Audio Link interactions and device hardware management.",
   "requestFramePermissions": [
     "microphone",
     "camera"
