@@ -1,4 +1,10 @@
 
+export enum AssistantMode {
+  EFFICIENCY = 'EFFICIENCY',
+  CREATIVE = 'CREATIVE',
+  PRECISION = 'PRECISION'
+}
+
 export interface DeviceState {
   wifi: boolean;
   bluetooth: boolean;
@@ -17,19 +23,6 @@ export interface Notification {
   content: string;
   timestamp: Date;
   type: 'message' | 'alert' | 'schedule';
-}
-
-export interface Alarm {
-  id: string;
-  time: string;
-  label: string;
-  active: boolean;
-}
-
-export interface AppSettings {
-  activationPhrase: string;
-  userName: string;
-  theme: 'dark' | 'light';
 }
 
 export enum AssistantStatus {
