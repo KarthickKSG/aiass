@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { AssistantStatus, DeviceState, Notification } from './types';
@@ -421,11 +420,22 @@ const App: React.FC = () => {
         <div className="hidden md:flex flex-1 overflow-y-auto scrollbar-hide flex-col space-y-4">
           {isVisionActive && (
             <div className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 group shadow-2xl">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-90" />
               <canvas ref={canvasRef} width="640" height="480" className="hidden" />
+              
+              {/* Camera Digital Overlay */}
+              <div className="absolute inset-0 bg-blue-500/5 pointer-events-none border border-blue-400/20 rounded-2xl"></div>
+              <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-blue-400/30 shadow-[0_0_8px_rgba(96,165,250,0.5)] animate-scan pointer-events-none"></div>
+              
               <div className="absolute top-3 left-3 flex items-center space-x-1.5 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10">
                 <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_#ef4444]"></div>
                 <span className="text-[8px] font-black text-white uppercase tracking-tighter">Live Optic Link</span>
+              </div>
+
+              {/* Corner Active Indicator */}
+              <div className="absolute top-3 right-3 flex items-center space-x-1.5 bg-blue-600/60 backdrop-blur-md px-2 py-0.5 rounded border border-blue-400/40">
+                <div className="w-1 h-1 bg-white rounded-full animate-pulse"></div>
+                <span className="text-[7px] font-black text-white uppercase tracking-[0.2em]">Cam Active</span>
               </div>
             </div>
           )}
@@ -446,7 +456,13 @@ const App: React.FC = () => {
       <main className="z-10 flex-1 flex flex-col relative p-4 md:p-6 overflow-hidden">
         {isVisionActive && (
           <div className="md:hidden absolute top-4 right-4 w-28 aspect-video rounded-xl overflow-hidden border border-white/10 z-30 shadow-2xl bg-black">
-            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-90" />
+            <div className="absolute inset-0 bg-blue-500/5 pointer-events-none"></div>
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-blue-400/30 animate-scan"></div>
+            <div className="absolute top-1.5 right-1.5 flex items-center space-x-1 bg-blue-600/60 backdrop-blur-md px-1 py-0.5 rounded-sm border border-blue-400/40">
+              <div className="w-1 h-1 bg-white rounded-full animate-pulse"></div>
+              <span className="text-[6px] font-black text-white uppercase tracking-tighter">Active</span>
+            </div>
           </div>
         )}
 

@@ -22,43 +22,54 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
   const styles = `
     @keyframes spider-float {
       0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-10px); }
+      50% { transform: translateY(-8px); }
     }
     @keyframes vocalize {
       0%, 100% { transform: scaleY(1); }
-      50% { transform: scaleY(3); }
+      50% { transform: scaleY(3.5); }
     }
     @keyframes particle-up {
       0% { transform: translateY(0) scale(1); opacity: 1; }
-      100% { transform: translateY(-40px) scale(0); opacity: 0; }
+      100% { transform: translateY(-45px) scale(0); opacity: 0; }
     }
     @keyframes code-scroll {
       0% { transform: translateY(0); }
-      100% { transform: translateY(-12px); }
+      100% { transform: translateY(-20px); }
     }
     @keyframes eye-glow {
       0%, 100% { filter: drop-shadow(0 0 2px ${cyan}); opacity: 0.8; }
       50% { filter: drop-shadow(0 0 10px ${cyan}); opacity: 1; }
     }
-    @keyframes bracket-pulse {
+    @keyframes eye-rapid-fire {
+      0%, 100% { filter: drop-shadow(0 0 2px ${cyan}); opacity: 0.8; transform: scale(1); }
+      25% { filter: drop-shadow(0 0 15px #fff); opacity: 1; transform: scale(1.3); }
+      50% { filter: drop-shadow(0 0 5px ${cyan}); opacity: 0.9; transform: scale(1.1); }
+    }
+    @keyframes bracket-listening {
       0%, 100% { opacity: 0.4; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.08) translateX(2px); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+    @keyframes bracket-speak {
+      0%, 100% { opacity: 0.6; transform: scale(1) translateX(0); }
+      50% { opacity: 1; transform: scale(1.06) translateX(4px); }
     }
     @keyframes abdomen-throb {
-      0%, 100% { filter: drop-shadow(0 0 5px ${magenta}44); transform: scale(1); }
-      50% { filter: drop-shadow(0 0 15px ${magenta}88); transform: scale(1.02); }
+      0%, 100% { filter: drop-shadow(0 0 5px ${magenta}44); transform: scale(1); opacity: 0.9; }
+      50% { filter: drop-shadow(0 0 20px ${magenta}); transform: scale(1.04); opacity: 1; }
     }
     .animate-spider-float { animation: spider-float 4s ease-in-out infinite; }
-    .animate-vocalize { animation: vocalize 0.15s ease-in-out infinite; transform-origin: center; }
-    .animate-particle { animation: particle-up 1.5s ease-out infinite; }
-    .animate-code-scroll { animation: code-scroll 1.5s linear infinite; }
+    .animate-vocalize { animation: vocalize 0.12s ease-in-out infinite; transform-origin: center; }
+    .animate-particle { animation: particle-up 1.2s ease-out infinite; }
+    .animate-code-scroll { animation: code-scroll 2s linear infinite; }
     .animate-eye-glow { animation: eye-glow 0.8s ease-in-out infinite; }
-    .animate-bracket-pulse { animation: bracket-pulse 1.5s ease-in-out infinite; }
+    .animate-eye-rapid-fire { animation: eye-rapid-fire 0.25s ease-in-out infinite; transform-origin: center; }
+    .animate-bracket-listening { animation: bracket-listening 1.5s ease-in-out infinite; }
+    .animate-bracket-speak { animation: bracket-speak 0.6s ease-in-out infinite; }
     .animate-abdomen-throb { animation: abdomen-throb 1s ease-in-out infinite; transform-origin: center; }
   `;
 
   return (
-    <div className="flex flex-col items-center justify-center p-4" aria-label={`Assistant status: ${status}`}>
+    <div className="flex flex-col items-center justify-center p-4" aria-label={`Arachnid Avatar status: ${status}`}>
       <style>{styles}</style>
       <div className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
         
@@ -71,14 +82,24 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
         {/* Framing Brackets < > */}
         <div className="absolute inset-0 flex justify-between items-center px-4 pointer-events-none">
           <div 
-            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${status === AssistantStatus.LISTENING ? 'animate-bracket-pulse' : ''}`}
+            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${
+              status === AssistantStatus.LISTENING ? 'animate-bracket-listening text-cyan-400' : 
+              status === AssistantStatus.SPEAKING ? 'animate-bracket-speak text-cyan-400' : ''
+            }`}
             style={{ color: cyan, textShadow: glow }}
           >
             &lt;
           </div>
           <div 
-            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${status === AssistantStatus.LISTENING ? 'animate-bracket-pulse' : ''}`}
-            style={{ color: cyan, textShadow: glow, transform: status === AssistantStatus.LISTENING ? 'scaleX(-1)' : 'none' }}
+            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${
+              status === AssistantStatus.LISTENING ? 'animate-bracket-listening text-cyan-400' : 
+              status === AssistantStatus.SPEAKING ? 'animate-bracket-speak text-cyan-400' : ''
+            }`}
+            style={{ 
+              color: cyan, 
+              textShadow: glow,
+              transform: status === AssistantStatus.SPEAKING ? 'scaleX(-1)' : 'none'
+            }}
           >
             &gt;
           </div>
@@ -87,7 +108,7 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
         {/* The Mechanical Spider SVG */}
         <svg 
           viewBox="0 0 200 200" 
-          className={`w-48 h-48 md:w-64 md:h-64 relative z-10 drop-shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-all duration-500 ${status !== AssistantStatus.IDLE ? 'animate-spider-float' : ''}`}
+          className={`w-48 h-48 md:w-64 md:h-64 relative z-10 transition-all duration-500 ${status !== AssistantStatus.IDLE ? 'animate-spider-float' : ''}`}
         >
           <defs>
             <linearGradient id="spiderBody" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -100,14 +121,14 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
             </filter>
           </defs>
 
-          {/* Particles (Thinking State) */}
+          {/* Thinking Particles */}
           {status === AssistantStatus.THINKING && (
             <g>
-              <circle cx="100" cy="140" r="2" fill={magenta} className="animate-particle" style={{ animationDelay: '0s' }} />
-              <circle cx="85" cy="130" r="1.5" fill={cyan} className="animate-particle" style={{ animationDelay: '0.4s' }} />
-              <circle cx="115" cy="135" r="1.2" fill={magenta} className="animate-particle" style={{ animationDelay: '0.7s' }} />
-              <circle cx="95" cy="150" r="1.8" fill={cyan} className="animate-particle" style={{ animationDelay: '1s' }} />
-              <circle cx="105" cy="125" r="1" fill={magenta} className="animate-particle" style={{ animationDelay: '1.3s' }} />
+              <circle cx="100" cy="140" r="2.5" fill={magenta} className="animate-particle" style={{ animationDelay: '0s' }} />
+              <circle cx="85" cy="130" r="1.5" fill={cyan} className="animate-particle" style={{ animationDelay: '0.3s' }} />
+              <circle cx="115" cy="135" r="1.2" fill={magenta} className="animate-particle" style={{ animationDelay: '0.6s' }} />
+              <circle cx="95" cy="150" r="2" fill={cyan} className="animate-particle" style={{ animationDelay: '0.9s' }} />
+              <circle cx="105" cy="125" r="1" fill={magenta} className="animate-particle" style={{ animationDelay: '1.2s' }} />
             </g>
           )}
 
@@ -140,7 +161,7 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
               filter="url(#neonGlow)" 
               className={status === AssistantStatus.SPEAKING ? 'animate-abdomen-throb' : ''}
             />
-            {/* Interior Code Pattern */}
+            {/* Interior Code Pattern with Seamless Scroll */}
             <clipPath id="abdomenClip">
               <path d="M0,0 L50,0 L40,55 L25,70 L10,55 Z" />
             </clipPath>
@@ -150,7 +171,8 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
                   <rect x="15" y="25" width="20" height="2" fill={cyan} />
                   <rect x="10" y="35" width="30" height="2" fill={magenta} />
                   <rect x="20" y="45" width="10" height="2" fill={cyan} />
-                  {/* Duplicate for seamless scroll */}
+                  
+                  {/* Seamless continuation for animation */}
                   <rect x="10" y="65" width="30" height="2" fill={cyan} />
                   <rect x="15" y="75" width="20" height="2" fill={cyan} />
                   <rect x="10" y="85" width="30" height="2" fill={magenta} />
@@ -167,49 +189,55 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
             <circle 
               cx="96" cy="78" r="1.5" 
               fill={cyan} 
-              className={status === AssistantStatus.LISTENING ? 'animate-eye-glow' : ''} 
+              className={
+                status === AssistantStatus.LISTENING ? 'animate-eye-glow' : 
+                status === AssistantStatus.SPEAKING ? 'animate-eye-rapid-fire' : ''
+              } 
             />
             <circle 
               cx="104" cy="78" r="1.5" 
               fill={cyan} 
-              className={status === AssistantStatus.LISTENING ? 'animate-eye-glow' : ''} 
+              className={
+                status === AssistantStatus.LISTENING ? 'animate-eye-glow' : 
+                status === AssistantStatus.SPEAKING ? 'animate-eye-rapid-fire' : ''
+              } 
             />
 
-            {/* Vocalizer (Mouth Equalizer) */}
+            {/* Vocalizer (Equalizer-style Mouth) */}
             {status === AssistantStatus.SPEAKING && (
               <g transform="translate(93, 82)">
                 <rect x="1" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0s' }} />
-                <rect x="4" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.05s' }} />
-                <rect x="7" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.1s' }} />
-                <rect x="10" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.15s' }} />
+                <rect x="4" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.04s' }} />
+                <rect x="7" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.08s' }} />
+                <rect x="10" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.12s' }} />
               </g>
             )}
           </g>
         </svg>
 
-        {/* Neural Transmission Pulse (Speaking State) */}
+        {/* Neural Transmission Pulse */}
         {status === AssistantStatus.SPEAKING && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-44 h-44 border-2 border-cyan-500/10 rounded-full animate-[ping_1.5s_linear_infinite]"></div>
-            <div className="w-44 h-44 border-2 border-magenta-500/5 rounded-full animate-[ping_2s_linear_infinite]"></div>
+            <div className="w-48 h-48 border-2 border-cyan-500/15 rounded-full animate-[ping_1.5s_linear_infinite]"></div>
+            <div className="w-48 h-48 border-2 border-magenta-500/10 rounded-full animate-[ping_2s_linear_infinite]"></div>
           </div>
         )}
       </div>
       
       <div className="mt-8 text-center">
-        <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mb-4 shadow-inner">
-           <div className={`w-2 h-2 rounded-full transition-all duration-500 ${status !== AssistantStatus.IDLE ? 'bg-cyan-400 animate-pulse shadow-[0_0_10px_#00f2ff]' : 'bg-slate-700'}`}></div>
-           <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">Arachnid-X Link</span>
+        <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mb-4 shadow-xl">
+           <div className={`w-2 h-2 rounded-full transition-all duration-500 ${status !== AssistantStatus.IDLE ? 'bg-cyan-400 animate-pulse shadow-[0_0_12px_#00f2ff]' : 'bg-slate-700'}`}></div>
+           <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">Neural Engine V4.5</span>
         </div>
         <h2 className="text-3xl md:text-4xl font-black google-font tracking-tighter text-white">
           KING <span style={{ color: magenta }} className={status === AssistantStatus.THINKING ? 'animate-pulse' : ''}>AI</span>
         </h2>
         <p className="text-slate-500 font-bold text-[9px] tracking-[0.4em] uppercase mt-2">
-          {status === AssistantStatus.IDLE && 'Standby Protocol'}
-          {status === AssistantStatus.LISTENING && 'Listening to frequency...'}
-          {status === AssistantStatus.THINKING && 'Processing neural query...'}
-          {status === AssistantStatus.SPEAKING && 'Transmitting signal...'}
-          {status === AssistantStatus.ERROR && 'Connection interrupted'}
+          {status === AssistantStatus.IDLE && 'Standby Mode'}
+          {status === AssistantStatus.LISTENING && 'Listening to user frequency...'}
+          {status === AssistantStatus.THINKING && 'Processing synaptic request...'}
+          {status === AssistantStatus.SPEAKING && 'Transmitting response...'}
+          {status === AssistantStatus.ERROR && 'Sync failure detected'}
         </p>
       </div>
     </div>
