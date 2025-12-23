@@ -9,44 +9,86 @@ interface AIAvatarProps {
 const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
   const getColors = () => {
     switch (status) {
-      case AssistantStatus.LISTENING: return { cyan: '#00f2ff', magenta: '#bc13fe', primary: '#00f2ff', opacity: 1 };
-      case AssistantStatus.SPEAKING: return { cyan: '#00f2ff', magenta: '#bc13fe', primary: '#00f2ff', opacity: 1 };
-      case AssistantStatus.THINKING: return { cyan: '#bc13fe', magenta: '#00f2ff', primary: '#bc13fe', opacity: 0.8 };
-      case AssistantStatus.ERROR: return { cyan: '#ff0000', magenta: '#7a0000', primary: '#ff0000', opacity: 1 };
-      default: return { cyan: '#475569', magenta: '#1e293b', primary: '#334155', opacity: 0.5 };
+      case AssistantStatus.LISTENING: return { cyan: '#00f2ff', magenta: '#bc13fe', primary: '#00f2ff', opacity: 1, glow: '0 0 20px #00f2ff' };
+      case AssistantStatus.SPEAKING: return { cyan: '#00f2ff', magenta: '#bc13fe', primary: '#00f2ff', opacity: 1, glow: '0 0 30px #00f2ff' };
+      case AssistantStatus.THINKING: return { cyan: '#bc13fe', magenta: '#00f2ff', primary: '#bc13fe', opacity: 0.8, glow: '0 0 15px #bc13fe' };
+      case AssistantStatus.ERROR: return { cyan: '#ff0000', magenta: '#7a0000', primary: '#ff0000', opacity: 1, glow: '0 0 20px #ff0000' };
+      default: return { cyan: '#475569', magenta: '#1e293b', primary: '#334155', opacity: 0.5, glow: 'none' };
     }
   };
 
-  const { cyan, magenta, primary, opacity } = getColors();
+  const { cyan, magenta, primary, opacity, glow } = getColors();
+
+  const styles = `
+    @keyframes spider-float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes vocalize {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(3); }
+    }
+    @keyframes particle-up {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-40px) scale(0); opacity: 0; }
+    }
+    @keyframes code-scroll {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-12px); }
+    }
+    @keyframes eye-glow {
+      0%, 100% { filter: drop-shadow(0 0 2px ${cyan}); opacity: 0.8; }
+      50% { filter: drop-shadow(0 0 10px ${cyan}); opacity: 1; }
+    }
+    @keyframes bracket-pulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08) translateX(2px); }
+    }
+    @keyframes abdomen-throb {
+      0%, 100% { filter: drop-shadow(0 0 5px ${magenta}44); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 15px ${magenta}88); transform: scale(1.02); }
+    }
+    .animate-spider-float { animation: spider-float 4s ease-in-out infinite; }
+    .animate-vocalize { animation: vocalize 0.15s ease-in-out infinite; transform-origin: center; }
+    .animate-particle { animation: particle-up 1.5s ease-out infinite; }
+    .animate-code-scroll { animation: code-scroll 1.5s linear infinite; }
+    .animate-eye-glow { animation: eye-glow 0.8s ease-in-out infinite; }
+    .animate-bracket-pulse { animation: bracket-pulse 1.5s ease-in-out infinite; }
+    .animate-abdomen-throb { animation: abdomen-throb 1s ease-in-out infinite; transform-origin: center; }
+  `;
 
   return (
-    <div className="flex flex-col items-center justify-center p-4">
+    <div className="flex flex-col items-center justify-center p-4" aria-label={`Assistant status: ${status}`}>
+      <style>{styles}</style>
       <div className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
         
         {/* Background Atmosphere */}
         <div 
-          className="absolute inset-0 rounded-full blur-[100px] opacity-20 transition-all duration-1000"
+          className="absolute inset-0 rounded-full blur-[100px] opacity-10 transition-all duration-1000"
           style={{ backgroundColor: primary }}
         ></div>
 
         {/* Framing Brackets < > */}
         <div className="absolute inset-0 flex justify-between items-center px-4 pointer-events-none">
           <div 
-            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${status === AssistantStatus.SPEAKING ? 'scale-110 translate-x-[-10px]' : ''}`}
-            style={{ color: cyan, textShadow: `0 0 20px ${cyan}44` }}
+            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${status === AssistantStatus.LISTENING ? 'animate-bracket-pulse' : ''}`}
+            style={{ color: cyan, textShadow: glow }}
           >
             &lt;
           </div>
           <div 
-            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${status === AssistantStatus.SPEAKING ? 'scale-110 translate-x-[10px]' : ''}`}
-            style={{ color: cyan, textShadow: `0 0 20px ${cyan}44` }}
+            className={`text-6xl md:text-8xl font-light google-font transition-all duration-500 ${status === AssistantStatus.LISTENING ? 'animate-bracket-pulse' : ''}`}
+            style={{ color: cyan, textShadow: glow, transform: status === AssistantStatus.LISTENING ? 'scaleX(-1)' : 'none' }}
           >
             &gt;
           </div>
         </div>
 
         {/* The Mechanical Spider SVG */}
-        <svg viewBox="0 0 200 200" className="w-48 h-48 md:w-64 md:h-64 relative z-10 drop-shadow-[0_0_15px_rgba(0,242,255,0.3)]">
+        <svg 
+          viewBox="0 0 200 200" 
+          className={`w-48 h-48 md:w-64 md:h-64 relative z-10 drop-shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-all duration-500 ${status !== AssistantStatus.IDLE ? 'animate-spider-float' : ''}`}
+        >
           <defs>
             <linearGradient id="spiderBody" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor="#1e293b" />
@@ -58,24 +100,31 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
             </filter>
           </defs>
 
+          {/* Particles (Thinking State) */}
+          {status === AssistantStatus.THINKING && (
+            <g>
+              <circle cx="100" cy="140" r="2" fill={magenta} className="animate-particle" style={{ animationDelay: '0s' }} />
+              <circle cx="85" cy="130" r="1.5" fill={cyan} className="animate-particle" style={{ animationDelay: '0.4s' }} />
+              <circle cx="115" cy="135" r="1.2" fill={magenta} className="animate-particle" style={{ animationDelay: '0.7s' }} />
+              <circle cx="95" cy="150" r="1.8" fill={cyan} className="animate-particle" style={{ animationDelay: '1s' }} />
+              <circle cx="105" cy="125" r="1" fill={magenta} className="animate-particle" style={{ animationDelay: '1.3s' }} />
+            </g>
+          )}
+
           {/* Legs - Left Side */}
           <g stroke={cyan} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity={opacity}>
-            {/* Upper Left */}
             <path d="M85,80 L50,50 L35,80" className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
-            <path d="M80,95 L40,85 L25,120" style={{ animationDelay: '0.1s' }} />
-            {/* Lower Left */}
-            <path d="M85,115 L45,135 L40,165" style={{ animationDelay: '0.2s' }} />
-            <path d="M95,125 L75,155 L70,185" style={{ animationDelay: '0.3s' }} />
+            <path d="M80,95 L40,85 L25,120" style={{ animationDelay: '0.1s' }} className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
+            <path d="M85,115 L45,135 L40,165" style={{ animationDelay: '0.2s' }} className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
+            <path d="M95,125 L75,155 L70,185" style={{ animationDelay: '0.3s' }} className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
           </g>
 
           {/* Legs - Right Side */}
           <g stroke={cyan} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity={opacity}>
-            {/* Upper Right */}
             <path d="M115,80 L150,50 L165,80" className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
-            <path d="M120,95 L160,85 L175,120" style={{ animationDelay: '0.1s' }} />
-            {/* Lower Right */}
-            <path d="M115,115 L155,135 L160,165" style={{ animationDelay: '0.2s' }} />
-            <path d="M105,125 L125,155 L130,185" style={{ animationDelay: '0.3s' }} />
+            <path d="M120,95 L160,85 L175,120" style={{ animationDelay: '0.1s' }} className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
+            <path d="M115,115 L155,135 L160,165" style={{ animationDelay: '0.2s' }} className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
+            <path d="M105,125 L125,155 L130,185" style={{ animationDelay: '0.3s' }} className={status !== AssistantStatus.IDLE ? 'animate-pulse' : ''} />
           </g>
 
           {/* Thorax (Middle Body) */}
@@ -83,49 +132,84 @@ const AssistantOrb: React.FC<AIAvatarProps> = ({ status }) => {
 
           {/* Abdomen (Core) */}
           <g transform="translate(75, 110)">
-            <path d="M0,0 L50,0 L40,55 L25,70 L10,55 Z" fill="#020617" stroke={magenta} strokeWidth="1.5" filter="url(#neonGlow)" />
+            <path 
+              d="M0,0 L50,0 L40,55 L25,70 L10,55 Z" 
+              fill="#020617" 
+              stroke={magenta} 
+              strokeWidth="1.5" 
+              filter="url(#neonGlow)" 
+              className={status === AssistantStatus.SPEAKING ? 'animate-abdomen-throb' : ''}
+            />
             {/* Interior Code Pattern */}
-            <g opacity="0.6">
-               <rect x="10" y="15" width="30" height="2" fill={cyan}>
-                 {status === AssistantStatus.THINKING && <animate attributeName="width" values="0;30;0" dur="2s" repeatCount="indefinite" />}
-               </rect>
-               <rect x="15" y="25" width="20" height="2" fill={cyan} />
-               <rect x="10" y="35" width="30" height="2" fill={magenta} />
-               <rect x="20" y="45" width="10" height="2" fill={cyan} />
+            <clipPath id="abdomenClip">
+              <path d="M0,0 L50,0 L40,55 L25,70 L10,55 Z" />
+            </clipPath>
+            <g opacity="0.6" clipPath="url(#abdomenClip)">
+               <g className={status === AssistantStatus.THINKING ? 'animate-code-scroll' : ''}>
+                  <rect x="10" y="15" width="30" height="2" fill={cyan} />
+                  <rect x="15" y="25" width="20" height="2" fill={cyan} />
+                  <rect x="10" y="35" width="30" height="2" fill={magenta} />
+                  <rect x="20" y="45" width="10" height="2" fill={cyan} />
+                  {/* Duplicate for seamless scroll */}
+                  <rect x="10" y="65" width="30" height="2" fill={cyan} />
+                  <rect x="15" y="75" width="20" height="2" fill={cyan} />
+                  <rect x="10" y="85" width="30" height="2" fill={magenta} />
+                  <rect x="20" y="95" width="10" height="2" fill={cyan} />
+               </g>
             </g>
           </g>
 
           {/* Head & Eyes */}
           <g>
             <path d="M90,85 L110,85 L105,70 L95,70 Z" fill="#0f172a" stroke={cyan} strokeWidth="1" />
-            <circle cx="96" cy="78" r="1.5" fill={cyan} className={status === AssistantStatus.LISTENING ? 'animate-ping' : ''} />
-            <circle cx="104" cy="78" r="1.5" fill={cyan} className={status === AssistantStatus.LISTENING ? 'animate-ping' : ''} />
+            
+            {/* Eyes */}
+            <circle 
+              cx="96" cy="78" r="1.5" 
+              fill={cyan} 
+              className={status === AssistantStatus.LISTENING ? 'animate-eye-glow' : ''} 
+            />
+            <circle 
+              cx="104" cy="78" r="1.5" 
+              fill={cyan} 
+              className={status === AssistantStatus.LISTENING ? 'animate-eye-glow' : ''} 
+            />
+
+            {/* Vocalizer (Mouth Equalizer) */}
+            {status === AssistantStatus.SPEAKING && (
+              <g transform="translate(93, 82)">
+                <rect x="1" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0s' }} />
+                <rect x="4" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.05s' }} />
+                <rect x="7" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.1s' }} />
+                <rect x="10" y="0" width="1.5" height="1" fill={cyan} className="animate-vocalize" style={{ animationDelay: '0.15s' }} />
+              </g>
+            )}
           </g>
         </svg>
 
-        {/* Neural Transmission Pulse */}
+        {/* Neural Transmission Pulse (Speaking State) */}
         {status === AssistantStatus.SPEAKING && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-32 h-32 border-2 border-cyan-500/30 rounded-full animate-[ping_1.5s_linear_infinite]"></div>
-            <div className="w-32 h-32 border-2 border-magenta-500/20 rounded-full animate-[ping_2s_linear_infinite]"></div>
+            <div className="w-44 h-44 border-2 border-cyan-500/10 rounded-full animate-[ping_1.5s_linear_infinite]"></div>
+            <div className="w-44 h-44 border-2 border-magenta-500/5 rounded-full animate-[ping_2s_linear_infinite]"></div>
           </div>
         )}
       </div>
       
       <div className="mt-8 text-center">
-        <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mb-4">
-           <div className={`w-2 h-2 rounded-full ${status !== AssistantStatus.IDLE ? 'bg-cyan-400 animate-pulse shadow-[0_0_10px_#00f2ff]' : 'bg-slate-700'}`}></div>
-           <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">Arachnid Sync-V4</span>
+        <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mb-4 shadow-inner">
+           <div className={`w-2 h-2 rounded-full transition-all duration-500 ${status !== AssistantStatus.IDLE ? 'bg-cyan-400 animate-pulse shadow-[0_0_10px_#00f2ff]' : 'bg-slate-700'}`}></div>
+           <span className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">Arachnid-X Link</span>
         </div>
         <h2 className="text-3xl md:text-4xl font-black google-font tracking-tighter text-white">
-          KING <span style={{ color: magenta }}>AI</span>
+          KING <span style={{ color: magenta }} className={status === AssistantStatus.THINKING ? 'animate-pulse' : ''}>AI</span>
         </h2>
         <p className="text-slate-500 font-bold text-[9px] tracking-[0.4em] uppercase mt-2">
-          {status === AssistantStatus.IDLE && 'Dormant Protocol'}
-          {status === AssistantStatus.LISTENING && 'Interpreting Frequency'}
-          {status === AssistantStatus.THINKING && 'Compiling Neural Data'}
-          {status === AssistantStatus.SPEAKING && 'Broadcasting Signal'}
-          {status === AssistantStatus.ERROR && 'Core Disconnect'}
+          {status === AssistantStatus.IDLE && 'Standby Protocol'}
+          {status === AssistantStatus.LISTENING && 'Listening to frequency...'}
+          {status === AssistantStatus.THINKING && 'Processing neural query...'}
+          {status === AssistantStatus.SPEAKING && 'Transmitting signal...'}
+          {status === AssistantStatus.ERROR && 'Connection interrupted'}
         </p>
       </div>
     </div>
