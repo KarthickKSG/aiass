@@ -1,6 +1,6 @@
 {
-  "name": "King AI - Core Assistant v1.2",
-  "description": "Enterprise-grade AI Voice Assistant powered by Gemini. Version 1.2 focuses on robust Core Audio Link interactions and device hardware management.",
+  "name": "King AI - Neural Engine v1.2",
+  "description": "Enterprise-grade AI Voice Assistant powered by Gemini. Version 1.2 features the high-performance Neural Engine for real-time cognitive processing and hardware orchestration.",
   "requestFramePermissions": [
     "microphone",
     "camera"

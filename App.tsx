@@ -36,14 +36,14 @@ const App: React.FC = () => {
     {
       id: 'v1.2',
       sender: 'SYSTEM UPDATE',
-      content: 'Core Audio Link v1.2 active. Vocal algorithms optimized for clarity.',
+      content: 'Neural Engine v1.2 active. Cognitive pathways optimized for zero-latency execution.',
       timestamp: new Date(),
       type: 'alert'
     },
     {
       id: 'v1.1',
       sender: 'KERNEL LOG',
-      content: 'Device control tools successfully integrated into Core Audio protocol.',
+      content: 'Hardware orchestration tools successfully mapped to Neural Engine core.',
       timestamp: new Date(Date.now() - 1000 * 60 * 15),
       type: 'schedule'
     }
@@ -87,7 +87,7 @@ const App: React.FC = () => {
         setHasApiKey(true);
         setErrorMessage(null);
       } catch (err) {
-        setErrorMessage("Authentication failure.");
+        setErrorMessage("Neural link authentication failure.");
       }
     }
   };
@@ -114,7 +114,7 @@ const App: React.FC = () => {
         streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       }
     } catch (err) {
-      setErrorMessage("Microphone access is restricted.");
+      setErrorMessage("Audio sensors restricted.");
       throw err;
     }
   };
@@ -127,7 +127,7 @@ const App: React.FC = () => {
       videoStreamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setIsVisionActive(true);
-      addNotification('SYSTEM', 'Visual sensors online. v1.2 Bridge protocol active.', 'alert');
+      addNotification('SYSTEM', 'Visual feed online. Synchronizing with Neural Engine v1.2.', 'alert');
       
       visionIntervalRef.current = window.setInterval(() => {
         if (videoRef.current && canvasRef.current && sessionPromiseRef.current) {
@@ -148,7 +148,7 @@ const App: React.FC = () => {
         }
       }, 1000 / FRAME_RATE);
     } catch (err) {
-      setErrorMessage("Optical sensors failing.");
+      setErrorMessage("Optical feed failure.");
     }
   };
 
@@ -171,7 +171,7 @@ const App: React.FC = () => {
       
       const config: any = {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: SYSTEM_INSTRUCTION + `\nProtocol: v1.2 Core. Mode: ${mode}.`,
+        systemInstruction: SYSTEM_INSTRUCTION + `\nProtocol: v1.2 Neural. Mode: ${mode}.`,
         tools: [{ functionDeclarations: DEVICE_TOOLS }],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
       };
@@ -182,7 +182,7 @@ const App: React.FC = () => {
           onopen: () => {
             setIsSessionActive(true);
             setStatus(AssistantStatus.LISTENING);
-            addNotification('KING', 'Core Link v1.2 established.', 'message');
+            addNotification('KING', 'Neural Engine v1.2 connection established.', 'message');
             
             if (audioContextRef.current && streamRef.current) {
               const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
@@ -234,7 +234,7 @@ const App: React.FC = () => {
             }
           },
           onerror: (e: any) => {
-            setErrorMessage("Synaptic drift detected. v1.2 Protocol re-syncing...");
+            setErrorMessage("Synaptic drift detected. Re-syncing Neural Engine...");
             if (e?.message?.includes('not found')) setHasApiKey(false);
           },
           onclose: () => { setIsSessionActive(false); setStatus(AssistantStatus.IDLE); }
@@ -244,7 +244,7 @@ const App: React.FC = () => {
       sessionPromiseRef.current = sessionPromise;
     } catch (err: any) {
       setStatus(AssistantStatus.ERROR);
-      setErrorMessage("Failed to establish v1.2 bridge.");
+      setErrorMessage("Neural bridge failure.");
     }
   };
 
@@ -282,14 +282,14 @@ const App: React.FC = () => {
                   <BrainCircuit className="w-8 h-8 mr-4 text-cyan-400" />
                   Kernel v1.2
                 </h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Core Link Preferences</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Neural Engine Preferences</p>
               </div>
               <button onClick={() => setShowSettings(false)} className="p-3 rounded-2xl bg-white/5 text-slate-400 hover:text-white transition-all"><X className="w-6 h-6" /></button>
             </div>
             
             <div className="space-y-10">
               <div className="space-y-4">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Core Protocol</label>
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Engine Protocol</label>
                 <div className="grid grid-cols-3 gap-3">
                   {Object.values(AssistantMode).map(m => (
                     <button 
@@ -304,19 +304,19 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Version History</label>
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] px-2">Version Registry</label>
                 <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] flex flex-col space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 text-cyan-400">
                       <History className="w-4 h-4" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Protocol Evolution</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Evolutionary Path</span>
                     </div>
-                    <span className="text-[9px] font-bold text-slate-600 uppercase">v1.2 (Active)</span>
+                    <span className="text-[9px] font-bold text-slate-600 uppercase">v1.2 (Latest)</span>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[8px] text-slate-500 font-bold uppercase">v1.0 Basic Voice Core</p>
-                    <p className="text-[8px] text-slate-500 font-bold uppercase">v1.1 Advanced Tooling</p>
-                    <p className="text-[8px] text-cyan-400 font-black uppercase">v1.2 Optimized Audio Link</p>
+                    <p className="text-[8px] text-slate-500 font-bold uppercase">v1.0 Basic Neural Core</p>
+                    <p className="text-[8px] text-slate-500 font-bold uppercase">v1.1 Synthetic Intelligence</p>
+                    <p className="text-[8px] text-cyan-400 font-black uppercase">v1.2 Optimized Neural Engine</p>
                   </div>
                 </div>
               </div>
@@ -330,7 +330,7 @@ const App: React.FC = () => {
                     <Cpu className="w-6 h-6" />
                     <div className="text-left">
                       <span className="text-[11px] font-black uppercase tracking-widest block">Update API Key</span>
-                      <span className="text-[8px] font-bold text-cyan-400/60 uppercase">AES-256 Storage</span>
+                      <span className="text-[8px] font-bold text-cyan-400/60 uppercase">AES-256 Cloud storage</span>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 opacity-40 group-hover:translate-x-1 transition-transform" />
@@ -350,7 +350,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black google-font tracking-tighter">KING AI</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Core Audio Node v1.2</p>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Neural Engine Node v1.2</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -376,7 +376,7 @@ const App: React.FC = () => {
                 <div className="absolute top-4 left-4 right-4 h-[1px] bg-cyan-400/30 animate-scan"></div>
                 <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
                   <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
-                  <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Core Feed: v1.2</span>
+                  <span className="text-[8px] font-black text-white uppercase tracking-[0.3em]">Engine Feed: v1.2</span>
                 </div>
               </div>
             </div>
@@ -384,8 +384,8 @@ const App: React.FC = () => {
 
           <div className="glass rounded-[2.5rem] p-7 space-y-6 shrink-0 border-white/5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center"><BarChart3 className="w-4 h-4 mr-3" /> Core Frequency</span>
-              <span className="text-[9px] font-black text-cyan-400 tracking-widest animate-pulse uppercase">Modulating...</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center"><BarChart3 className="w-4 h-4 mr-3" /> Engine Frequency</span>
+              <span className="text-[9px] font-black text-cyan-400 tracking-widest animate-pulse uppercase">Processing...</span>
             </div>
             <div className="flex space-x-2.5 h-10 items-end">
               {[35, 70, 45, 95, 60, 85, 40, 75, 55, 30, 90, 65].map((h, i) => (
@@ -408,7 +408,7 @@ const App: React.FC = () => {
         >
           <span className="flex items-center justify-center">
             {isSessionActive ? <MicOff className="w-5 h-5 mr-4" /> : <Mic className="w-5 h-5 mr-4 group-hover:scale-110 transition-transform" />}
-            {status === AssistantStatus.THINKING ? 'INITIALIZING...' : status === AssistantStatus.SPEAKING ? 'SPEAKING...' : isSessionActive ? 'Disconnect v1.2' : 'Connect Core v1.2'}
+            {status === AssistantStatus.THINKING ? 'INITIALIZING...' : status === AssistantStatus.SPEAKING ? 'SPEAKING...' : isSessionActive ? 'Sever Engine Link' : 'Initialize Engine v1.2'}
           </span>
         </button>
       </aside>
@@ -419,7 +419,7 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-6">
             <div className={`px-6 py-2.5 glass rounded-full flex items-center space-x-4 border-white/5 shadow-2xl transition-all duration-500 ${isSessionActive ? 'ring-2 ring-cyan-500/30 translate-y-1' : ''}`}>
                <div className={`w-2.5 h-2.5 rounded-full ${isSessionActive ? 'bg-cyan-400 shadow-[0_0_12px_#22d3ee]' : 'bg-slate-700 animate-pulse'}`}></div>
-               <span className="text-[11px] font-black text-slate-300 tracking-[0.3em] uppercase">{isSessionActive ? 'Core Linked' : 'Core Standby'}</span>
+               <span className="text-[11px] font-black text-slate-300 tracking-[0.3em] uppercase">{isSessionActive ? 'Neural Engine Linked' : 'Engine Standby'}</span>
             </div>
           </div>
           
@@ -452,14 +452,14 @@ const App: React.FC = () => {
                 <Lock className="w-10 h-10 text-cyan-400" />
               </div>
               <div className="space-y-4">
-                <h3 className="text-2xl font-black google-font tracking-tight text-white uppercase">Access Restricted</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed px-4">Initialize Version 1.2 Core Link by selecting a valid API key.</p>
+                <h3 className="text-2xl font-black google-font tracking-tight text-white uppercase">Neural Access Restricted</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed px-4">Initialize Neural Engine v1.2 by selecting a valid Gemini API key.</p>
               </div>
               <button 
                 onClick={handleOpenApiKeyDialog} 
                 className="w-full bg-gradient-to-r from-cyan-600 to-blue-700 text-white py-5 rounded-2xl font-black text-xs tracking-[0.3em] uppercase transition-all shadow-xl hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98]"
               >
-                Connect Core
+                Authenticate Engine
               </button>
             </div>
           ) : (
@@ -478,7 +478,7 @@ const App: React.FC = () => {
                       <div className="absolute inset-0 bg-cyan-400/40 rounded-full blur-[12px] animate-ping"></div>
                       <Mic className="w-6 h-6 text-cyan-400 relative z-10" />
                     </div>
-                    <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Initialize v1.2</span>
+                    <span className="text-[12px] font-black text-white tracking-[0.6em] uppercase">Engage Engine v1.2</span>
                   </button>
                 </div>
               )}
