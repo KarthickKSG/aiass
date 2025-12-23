@@ -282,8 +282,11 @@ const App: React.FC = () => {
       <aside className="z-20 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 bg-slate-950/60 backdrop-blur-3xl border-b md:border-b-0 md:border-r border-white/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Cpu className="text-white w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden">
+              <img src="/Logo.png" alt="King AI Logo" className="w-full h-full object-cover" onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.innerHTML = '<div class="flex items-center justify-center w-full h-full text-white"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg></div>';
+              }} />
             </div>
             <div>
               <h1 className="text-base font-bold google-font leading-tight">KING AI</h1>
