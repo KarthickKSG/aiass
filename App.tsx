@@ -49,8 +49,8 @@ const App: React.FC = () => {
 
   const initAudio = async () => {
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      outputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
     }
     if (!streamRef.current) {
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -58,12 +58,14 @@ const App: React.FC = () => {
     if (audioContextRef.current.state === 'suspended') {
       await audioContextRef.current.resume();
     }
-    if (outputAudioContextRef.current!.state === 'suspended') {
-      await outputAudioContextRef.current!.resume();
+    if (outputAudioContextRef.current && outputAudioContextRef.current.state === 'suspended') {
+      await outputAudioContextRef.current.resume();
     }
   };
 
   const handleToolCall = (toolCall: any) => {
+    if (!toolCall.functionCalls) return;
+
     for (const fc of toolCall.functionCalls) {
       console.log('Executing Tool:', fc.name, fc.args);
       let result = "ok";
@@ -100,7 +102,15 @@ const App: React.FC = () => {
   const startAssistant = async () => {
     try {
       await initAudio();
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Use process.env.API_KEY securely injected by Vercel
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        console.error('API_KEY is missing from environment variables');
+        setStatus(AssistantStatus.ERROR);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -109,46 +119,53 @@ const App: React.FC = () => {
             setIsSessionActive(true);
             setStatus(AssistantStatus.LISTENING);
 
-            const source = audioContextRef.current!.createMediaStreamSource(streamRef.current!);
-            const scriptProcessor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
-            
-            scriptProcessor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const pcmBlob = createBlob(inputData);
-              sessionPromise.then((session) => {
-                session.sendRealtimeInput({ media: pcmBlob });
-              });
-            };
-            
-            source.connect(scriptProcessor);
-            scriptProcessor.connect(audioContextRef.current!.destination);
+            if (audioContextRef.current && streamRef.current) {
+              const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
+              const scriptProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+              
+              scriptProcessor.onaudioprocess = (e) => {
+                const inputData = e.inputBuffer.getChannelData(0);
+                const pcmBlob = createBlob(inputData);
+                sessionPromise.then((session) => {
+                  session.sendRealtimeInput({ media: pcmBlob });
+                });
+              };
+              
+              source.connect(scriptProcessor);
+              scriptProcessor.connect(audioContextRef.current.destination);
+            }
           },
           onmessage: async (message: LiveServerMessage) => {
-            const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+            // Safer optional chaining to prevent TS18048
+            const modelParts = message.serverContent?.modelTurn?.parts;
+            const base64Audio = modelParts?.[0]?.inlineData?.data;
+
             if (base64Audio) {
               setStatus(AssistantStatus.SPEAKING);
-              const outputCtx = outputAudioContextRef.current!;
-              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
-              
-              const audioBuffer = await decodeAudioData(
-                decode(base64Audio),
-                outputCtx,
-                24000,
-                1
-              );
-              
-              const source = outputCtx.createBufferSource();
-              source.buffer = audioBuffer;
-              source.connect(outputCtx.destination);
-              
-              source.addEventListener('ended', () => {
-                sourcesRef.current.delete(source);
-                if (sourcesRef.current.size === 0) setStatus(AssistantStatus.LISTENING);
-              });
-              
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += audioBuffer.duration;
-              sourcesRef.current.add(source);
+              const outputCtx = outputAudioContextRef.current;
+              if (outputCtx) {
+                nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
+                
+                const audioBuffer = await decodeAudioData(
+                  decode(base64Audio),
+                  outputCtx,
+                  24000,
+                  1
+                );
+                
+                const source = outputCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(outputCtx.destination);
+                
+                source.addEventListener('ended', () => {
+                  sourcesRef.current.delete(source);
+                  if (sourcesRef.current.size === 0) setStatus(AssistantStatus.LISTENING);
+                });
+                
+                source.start(nextStartTimeRef.current);
+                nextStartTimeRef.current += audioBuffer.duration;
+                sourcesRef.current.add(source);
+              }
             }
 
             if (message.toolCall) handleToolCall(message.toolCall);
@@ -251,7 +268,9 @@ const App: React.FC = () => {
           </div>
           <div className="flex space-x-4">
              <span className="text-xs font-bold">LTE</span>
-             <span className="text-xs font-bold">12:45 PM</span>
+             <span className="text-xs font-bold">
+               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+             </span>
           </div>
         </header>
 
