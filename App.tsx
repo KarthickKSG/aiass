@@ -11,7 +11,6 @@ import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssistantStatus>(AssistantStatus.IDLE);
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [deviceState, setDeviceState] = useState<DeviceState>({
     wifi: true,
@@ -49,7 +48,6 @@ const App: React.FC = () => {
   const visionIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    checkApiKey();
     return () => {
       stopAssistant();
       stopVision();
@@ -57,19 +55,9 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const checkApiKey = async () => {
-    if (window.aistudio) {
-      const selected = await window.aistudio.hasSelectedApiKey();
-      setHasKey(selected);
-    } else {
-      setHasKey(!!process.env.API_KEY);
-    }
-  };
-
   const handleLinkKey = async () => {
     if (window.aistudio) {
       await window.aistudio.openSelectKey();
-      setHasKey(true);
       setShowSettings(false);
     }
   };
@@ -218,8 +206,7 @@ const App: React.FC = () => {
             setStatus(AssistantStatus.ERROR);
             const msg = (e as any).message || "";
             if (msg.includes("Requested entity was not found")) {
-              setHasKey(false);
-              setErrorMessage("Project API key not found. Please re-link.");
+              setErrorMessage("API connection error. Please verify project settings in Settings.");
             } else {
               setErrorMessage("Sync connection failed.");
             }
@@ -248,35 +235,6 @@ const App: React.FC = () => {
     sessionPromiseRef.current = null;
     stopVision();
   };
-
-  if (hasKey === false) {
-    return (
-      <div className="h-dvh w-full flex flex-col items-center justify-center bg-[#020617] p-6 text-center">
-        <div className="w-20 h-20 rounded-3xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/20 mb-8">
-          <Key className="w-10 h-10 text-white" />
-        </div>
-        <h1 className="text-2xl font-black google-font tracking-tight mb-2">SYSTEM LINK REQUIRED</h1>
-        <p className="text-slate-400 text-sm max-w-xs mb-8 leading-relaxed">
-          To initialize King AI, you must link a valid API key from a paid GCP project.
-        </p>
-        <button 
-          onClick={handleLinkKey}
-          className="w-full max-w-xs py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all mb-4"
-        >
-          Select Project Key
-        </button>
-        <a 
-          href="https://ai.google.dev/gemini-api/docs/billing" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-[10px] font-bold text-slate-500 flex items-center space-x-1 uppercase tracking-widest hover:text-blue-400"
-        >
-          <span>Billing Documentation</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
-      </div>
-    );
-  }
 
   return (
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select">
