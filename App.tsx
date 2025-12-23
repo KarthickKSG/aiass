@@ -7,10 +7,11 @@ import { createBlob, decode, decodeAudioData } from './utils/audioUtils';
 import AssistantOrb from './components/AssistantOrb';
 import DeviceDashboard from './components/DeviceDashboard';
 import NotificationPanel from './components/NotificationPanel';
-import { ShieldAlert, Cpu, Wifi, Battery, MicOff } from 'lucide-react';
+import { ShieldAlert, Cpu, Wifi, Battery, MicOff, Eye, EyeOff, Key, ExternalLink } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssistantStatus>(AssistantStatus.IDLE);
+  const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [deviceState, setDeviceState] = useState<DeviceState>({
     wifi: true,
     bluetooth: true,
@@ -26,12 +27,13 @@ const App: React.FC = () => {
     {
       id: '1',
       sender: 'King System',
-      content: 'All systems operational. I am ready to assist you.',
+      content: 'Core architecture ready. Vision modules initialized.',
       timestamp: new Date(),
       type: 'alert'
     }
   ]);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [isVisionActive, setIsVisionActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -40,53 +42,103 @@ const App: React.FC = () => {
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const videoStreamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const visionIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
+    checkApiKey();
     return () => {
       stopAssistant();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      stopVision();
+      if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
 
-  const initAudio = async () => {
-    // Basic check for mobile context (HTTPS requirement)
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error("Microphone access is only available on secure connections (HTTPS). Please check your browser's security settings.");
+  const checkApiKey = async () => {
+    if (window.aistudio) {
+      const selected = await window.aistudio.hasSelectedApiKey();
+      setHasKey(selected);
+    } else {
+      // Fallback for environments where process.env is the only way
+      setHasKey(!!process.env.API_KEY);
     }
+  };
 
+  const handleLinkKey = async () => {
+    if (window.aistudio) {
+      await window.aistudio.openSelectKey();
+      setHasKey(true); // Proceeding as per instructions (assume success after trigger)
+    }
+  };
+
+  const initAudio = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Secure connection (HTTPS) required for hardware access.");
+    }
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
       outputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
     }
-    
-    // Critical for mobile: resume context on user gesture
-    if (audioContextRef.current.state === 'suspended') {
-      await audioContextRef.current.resume();
-    }
-    if (outputAudioContextRef.current && outputAudioContextRef.current.state === 'suspended') {
-      await outputAudioContextRef.current.resume();
-    }
+    if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+    if (outputAudioContextRef.current?.state === 'suspended') await outputAudioContextRef.current.resume();
 
     if (!streamRef.current) {
-      try {
-        streamRef.current = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          } 
-        });
-      } catch (err) {
-        throw new Error("Permission Denied: King requires microphone access to hear your instructions.");
-      }
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+      });
     }
+  };
+
+  const startVision = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+      });
+      videoStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setIsVisionActive(true);
+      
+      visionIntervalRef.current = window.setInterval(() => {
+        if (videoRef.current && canvasRef.current && sessionPromiseRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+            canvasRef.current.toBlob(async (blob) => {
+              if (blob && sessionPromiseRef.current) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64Data = (reader.result as string).split(',')[1];
+                  sessionPromiseRef.current?.then(session => {
+                    session.sendRealtimeInput({
+                      media: { data: base64Data, mimeType: 'image/jpeg' }
+                    });
+                  });
+                };
+                reader.readAsDataURL(blob);
+              }
+            }, 'image/jpeg', 0.6);
+          }
+        }
+      }, 1000);
+    } catch (err) {
+      setErrorMessage("Vision restricted by hardware or user.");
+    }
+  };
+
+  const stopVision = () => {
+    if (visionIntervalRef.current) clearInterval(visionIntervalRef.current);
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsVisionActive(false);
   };
 
   const handleToolCall = (toolCall: any) => {
     if (!toolCall.functionCalls) return;
-
     for (const fc of toolCall.functionCalls) {
       let result = "ok";
       switch (fc.name) {
@@ -99,22 +151,12 @@ const App: React.FC = () => {
         case 'set_alarm':
           result = `Alarm set for ${fc.args.time}.`;
           break;
-        case 'get_weather_update':
-          result = "Sky is clear, currently 24°C.";
-          break;
       }
-
-      if (sessionPromiseRef.current) {
-        sessionPromiseRef.current.then((session) => {
-          session.sendToolResponse({
-            functionResponses: {
-              id: fc.id,
-              name: fc.name,
-              response: { result },
-            }
-          });
+      sessionPromiseRef.current?.then(session => {
+        session.sendToolResponse({
+          functionResponses: { id: fc.id, name: fc.name, response: { result } }
         });
-      }
+      });
     }
   };
 
@@ -123,26 +165,21 @@ const App: React.FC = () => {
     setStatus(AssistantStatus.THINKING);
     try {
       await initAudio();
-      
-      // Using process.env.API_KEY as per core instructions
+      // Always create a new instance right before use to ensure latest API key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
             setIsSessionActive(true);
             setStatus(AssistantStatus.LISTENING);
-
             if (audioContextRef.current && streamRef.current) {
               const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
               const scriptProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
               scriptProcessor.onaudioprocess = (e) => {
                 const inputData = e.inputBuffer.getChannelData(0);
                 const pcmBlob = createBlob(inputData);
-                sessionPromise.then((session) => {
-                  session.sendRealtimeInput({ media: pcmBlob });
-                });
+                sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
               };
               source.connect(scriptProcessor);
               scriptProcessor.connect(audioContextRef.current.destination);
@@ -150,33 +187,26 @@ const App: React.FC = () => {
           },
           onmessage: async (message: LiveServerMessage) => {
             const parts = message.serverContent?.modelTurn?.parts;
-            
             if (parts && parts.length > 0) {
-              const part = parts[0];
-              const base64Audio = part.inlineData?.data;
-
-              if (base64Audio) {
+              const base64Audio = parts[0].inlineData?.data;
+              if (base64Audio && outputAudioContextRef.current) {
                 setStatus(AssistantStatus.SPEAKING);
-                const outputCtx = outputAudioContextRef.current;
-                if (outputCtx) {
-                  nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
-                  const audioBuffer = await decodeAudioData(decode(base64Audio), outputCtx, 24000, 1);
-                  const source = outputCtx.createBufferSource();
-                  source.buffer = audioBuffer;
-                  source.connect(outputCtx.destination);
-                  source.addEventListener('ended', () => {
-                    sourcesRef.current.delete(source);
-                    if (sourcesRef.current.size === 0) setStatus(AssistantStatus.LISTENING);
-                  });
-                  source.start(nextStartTimeRef.current);
-                  nextStartTimeRef.current += audioBuffer.duration;
-                  sourcesRef.current.add(source);
-                }
+                const ctx = outputAudioContextRef.current;
+                nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+                const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                source.addEventListener('ended', () => {
+                  sourcesRef.current.delete(source);
+                  if (sourcesRef.current.size === 0) setStatus(AssistantStatus.LISTENING);
+                });
+                source.start(nextStartTimeRef.current);
+                nextStartTimeRef.current += audioBuffer.duration;
+                sourcesRef.current.add(source);
               }
             }
-
             if (message.toolCall) handleToolCall(message.toolCall);
-
             if (message.serverContent?.interrupted) {
               sourcesRef.current.forEach(s => { try { s.stop(); } catch(e) {} });
               sourcesRef.current.clear();
@@ -185,9 +215,14 @@ const App: React.FC = () => {
             }
           },
           onerror: (e) => {
-            console.error('King API Error:', e);
             setStatus(AssistantStatus.ERROR);
-            setErrorMessage("Connection dropped. Please check your internet.");
+            const msg = (e as any).message || "";
+            if (msg.includes("Requested entity was not found")) {
+              setHasKey(false);
+              setErrorMessage("Project API key not found. Please re-link.");
+            } else {
+              setErrorMessage("Sync connection failed.");
+            }
           },
           onclose: () => {
             setIsSessionActive(false);
@@ -198,120 +233,132 @@ const App: React.FC = () => {
           responseModalities: [Modality.AUDIO],
           systemInstruction: SYSTEM_INSTRUCTION,
           tools: [{ functionDeclarations: DEVICE_TOOLS }],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
-          }
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
         }
       });
-
       sessionPromiseRef.current = sessionPromise;
     } catch (err: any) {
-      console.error('Activation Failed:', err);
       setStatus(AssistantStatus.ERROR);
-      setErrorMessage(err.message || "Activation Failed.");
+      setErrorMessage("Boot error: Check permissions.");
     }
   };
 
   const stopAssistant = () => {
-    if (sessionPromiseRef.current) {
-      sessionPromiseRef.current.then(session => session.close());
-      sessionPromiseRef.current = null;
-    }
+    sessionPromiseRef.current?.then(session => session.close());
+    sessionPromiseRef.current = null;
+    stopVision();
   };
+
+  if (hasKey === false) {
+    return (
+      <div className="h-dvh w-full flex flex-col items-center justify-center bg-[#020617] p-6 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/20 mb-8">
+          <Key className="w-10 h-10 text-white" />
+        </div>
+        <h1 className="text-2xl font-black google-font tracking-tight mb-2">SYSTEM LINK REQUIRED</h1>
+        <p className="text-slate-400 text-sm max-w-xs mb-8 leading-relaxed">
+          To initialize King AI, you must link a valid API key from a paid GCP project.
+        </p>
+        <button 
+          onClick={handleLinkKey}
+          className="w-full max-w-xs py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all mb-4"
+        >
+          Select Project Key
+        </button>
+        <a 
+          href="https://ai.google.dev/gemini-api/docs/billing" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[10px] font-bold text-slate-500 flex items-center space-x-1 uppercase tracking-widest hover:text-blue-400"
+        >
+          <span>Billing Documentation</span>
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative no-select">
-      {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-colors duration-1000 ${isSessionActive ? 'bg-blue-900/30' : 'bg-slate-900/20'}`}></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[100px]"></div>
+        <div className={`absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] transition-colors duration-1000 ${isSessionActive ? 'bg-blue-900/30' : 'bg-slate-900/10'}`}></div>
       </div>
 
-      {/* Sidebar/Drawer for Mobile */}
-      <aside className="z-10 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 bg-slate-950/40 backdrop-blur-3xl border-b md:border-b-0 md:border-r border-white/5">
-        <div className="flex items-center justify-between md:justify-start md:space-x-3">
+      <aside className="z-20 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 bg-slate-950/60 backdrop-blur-3xl border-b md:border-b-0 md:border-r border-white/5">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Cpu className="text-white w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Cpu className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base md:text-lg font-bold google-font leading-tight tracking-tight">KING AI</h1>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">OS v4.2.0</p>
+              <h1 className="text-base font-bold google-font leading-tight">KING AI</h1>
+              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em]">Vision Module v1.2</p>
             </div>
           </div>
-          <div className="md:hidden flex space-x-2">
-            <Battery className="w-4 h-4 text-slate-500" />
-            <Wifi className="w-4 h-4 text-slate-500" />
+          <div className="flex space-x-2">
+            <button 
+              onClick={isVisionActive ? stopVision : startVision}
+              className={`p-2 rounded-lg border transition-all ${isVisionActive ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500'}`}
+              title="Toggle Vision"
+            >
+              {isVisionActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
-        <div className="hidden md:flex flex-1 overflow-y-auto scrollbar-hide flex-col space-y-6">
-          <DeviceDashboard state={deviceState} />
-          <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Diagnostics</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-black/20 text-center border border-white/5">
-                <div className="text-[9px] text-slate-500 mb-1 uppercase font-black">Latency</div>
-                <div className="text-sm font-bold text-blue-400">24ms</div>
-              </div>
-              <div className="p-3 rounded-xl bg-black/20 text-center border border-white/5">
-                <div className="text-[9px] text-slate-500 mb-1 uppercase font-black">Uptime</div>
-                <div className="text-sm font-bold text-green-400">99.9%</div>
+        <div className="hidden md:flex flex-1 overflow-y-auto scrollbar-hide flex-col space-y-4">
+          {isVisionActive && (
+            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 group">
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              <canvas ref={canvasRef} width="640" height="480" className="hidden" />
+              <div className="absolute top-2 left-2 flex items-center space-x-1 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-full">
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Live Feed</span>
               </div>
             </div>
-          </div>
+          )}
+          <DeviceDashboard state={deviceState} />
         </div>
 
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
           disabled={status === AssistantStatus.THINKING}
-          className={`w-full py-4 md:py-5 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-500 shadow-2xl active:scale-95 touch-manipulation flex items-center justify-center space-x-2 ${
-            isSessionActive 
-              ? 'bg-red-500/10 text-red-400 border border-red-500/30' 
-              : 'bg-blue-600 text-white shadow-blue-600/30'
-          } ${status === AssistantStatus.THINKING ? 'opacity-50 grayscale' : ''}`}
+          className={`w-full py-4 rounded-xl font-black text-[10px] tracking-[0.2em] uppercase transition-all duration-500 shadow-2xl ${
+            isSessionActive ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-blue-600 text-white shadow-blue-600/20'
+          }`}
         >
-          {status === AssistantStatus.THINKING ? (
-             <span className="flex items-center space-x-2">
-               <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-               <span>Syncing...</span>
-             </span>
-          ) : isSessionActive ? 'Disconnect' : 'Initialize King'}
+          {isSessionActive ? 'End Session' : 'Wake King'}
         </button>
       </aside>
 
-      {/* Main Content */}
       <main className="z-10 flex-1 flex flex-col relative p-4 md:p-6 overflow-hidden">
-        <header className="flex justify-between items-center mb-4 md:mb-8 px-2">
-          <div className="text-[10px] md:text-xs font-black tracking-tight text-slate-500 uppercase">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+        {isVisionActive && (
+          <div className="md:hidden absolute top-4 right-4 w-28 aspect-video rounded-xl overflow-hidden border border-white/10 z-30 shadow-2xl">
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        <header className="flex justify-between items-center mb-8">
+          <div className="text-[10px] font-black tracking-tight text-slate-500 uppercase">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' })}
           </div>
           <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5">
-             <span className="text-[10px] font-bold text-slate-400">
-               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-             </span>
+             <span className="text-[10px] font-bold text-slate-400">ENCRYPTED LINK</span>
           </div>
         </header>
 
         {errorMessage && (
-          <div className="mx-auto mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-xs font-bold text-center flex items-center space-x-3 shadow-lg shadow-red-900/10 animate-in fade-in slide-in-from-top-2 duration-300">
-            <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
+          <div className="mx-auto mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-xs font-bold flex items-center space-x-3 shadow-lg">
+            <ShieldAlert className="w-5 h-5 text-red-500" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          {status === AssistantStatus.ERROR && !errorMessage ? (
-            <div className="flex flex-col items-center text-slate-500 space-y-4">
-              <MicOff className="w-12 h-12 opacity-20" />
-              <p className="text-sm font-bold">System Restricted</p>
-            </div>
-          ) : (
-            <AssistantOrb status={status} />
-          )}
+          <AssistantOrb status={status} />
         </div>
 
-        <div className="max-w-xl mx-auto w-full mt-auto mb-2 md:mb-4 max-h-[40vh] md:max-h-none flex flex-col">
+        <div className="max-w-xl mx-auto w-full mt-auto flex flex-col">
           <NotificationPanel notifications={notifications} />
         </div>
       </main>
