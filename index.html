@@ -3,7 +3,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#020617" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,20 +21,24 @@
         color: #f8fafc;
         margin: 0;
         overflow: hidden;
-        /* Fix for mobile height issues */
         height: 100dvh;
         width: 100vw;
+        -webkit-tap-highlight-color: transparent;
       }
       .google-font {
         font-family: 'Google Sans', sans-serif;
       }
-      /* Hide scrollbars but allow scrolling */
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
       }
       .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
+      }
+      /* Prevent text selection and long-press menus on UI elements */
+      .no-select {
+        user-select: none;
+        -webkit-user-select: none;
       }
     </style>
   <script type="importmap">
