@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { AssistantStatus, DeviceState, Notification, Alarm } from './types';
+import { AssistantStatus, DeviceState, Notification } from './types';
 import { SYSTEM_INSTRUCTION, DEVICE_TOOLS } from './constants';
 import { createBlob, decode, decodeAudioData } from './utils/audioUtils';
 import AssistantOrb from './components/AssistantOrb';
@@ -21,7 +21,7 @@ const App: React.FC = () => {
     brightness: 80,
     volume: 50,
   });
-  const [notifications, setNotifications] = useState<Notification[]>([
+  const [notifications] = useState<Notification[]>([
     {
       id: '1',
       sender: 'Manager',
@@ -38,6 +38,7 @@ const App: React.FC = () => {
     }
   ]);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
@@ -46,7 +47,6 @@ const App: React.FC = () => {
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Cleanup effect to release audio and network resources on unmount
   useEffect(() => {
     return () => {
       stopAssistant();
@@ -63,18 +63,35 @@ const App: React.FC = () => {
   }, []);
 
   const initAudio = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Your browser doesn't support microphone access. Please use a modern browser like Chrome or Safari over HTTPS.");
+    }
+
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
       outputAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
     }
-    if (!streamRef.current) {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }
+    
+    // Explicitly resume for mobile browser requirements
     if (audioContextRef.current.state === 'suspended') {
       await audioContextRef.current.resume();
     }
     if (outputAudioContextRef.current && outputAudioContextRef.current.state === 'suspended') {
       await outputAudioContextRef.current.resume();
+    }
+
+    if (!streamRef.current) {
+      try {
+        streamRef.current = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+      } catch (err) {
+        throw new Error("Microphone access denied. Please check your system settings and allow microphone access for this site.");
+      }
     }
   };
 
@@ -98,7 +115,6 @@ const App: React.FC = () => {
           break;
       }
 
-      // Ensure we use the resolved session promise to avoid race conditions
       if (sessionPromiseRef.current) {
         sessionPromiseRef.current.then((session) => {
           session.sendToolResponse({
@@ -114,9 +130,9 @@ const App: React.FC = () => {
   };
 
   const startAssistant = async () => {
+    setErrorMessage(null);
     try {
       await initAudio();
-      // Initialize GoogleGenAI right before the call as per best practices
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const sessionPromise = ai.live.connect({
@@ -132,7 +148,6 @@ const App: React.FC = () => {
               scriptProcessor.onaudioprocess = (e) => {
                 const inputData = e.inputBuffer.getChannelData(0);
                 const pcmBlob = createBlob(inputData);
-                // CRITICAL: Solely rely on sessionPromise resolves to send data
                 sessionPromise.then((session) => {
                   session.sendRealtimeInput({ media: pcmBlob });
                 });
@@ -152,7 +167,6 @@ const App: React.FC = () => {
                 setStatus(AssistantStatus.SPEAKING);
                 const outputCtx = outputAudioContextRef.current;
                 if (outputCtx) {
-                  // Synchronize next chunk playback to ensure gapless audio
                   nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
                   const audioBuffer = await decodeAudioData(decode(base64Audio), outputCtx, 24000, 1);
                   const source = outputCtx.createBufferSource();
@@ -181,6 +195,7 @@ const App: React.FC = () => {
           onerror: (e) => {
             console.error('King Error:', e);
             setStatus(AssistantStatus.ERROR);
+            setErrorMessage("Communication error. Please try again.");
           },
           onclose: () => {
             setIsSessionActive(false);
@@ -198,9 +213,10 @@ const App: React.FC = () => {
       });
 
       sessionPromiseRef.current = sessionPromise;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Startup Failed:', err);
       setStatus(AssistantStatus.ERROR);
+      setErrorMessage(err.message || "Initialization failed.");
     }
   };
 
@@ -212,24 +228,24 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative">
+    <div className="h-dvh w-full flex flex-col md:flex-row bg-[#020617] text-slate-100 overflow-hidden relative">
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-900/20 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[100px]"></div>
       </div>
 
-      <aside className="z-10 w-full md:w-80 p-6 flex flex-col space-y-6 bg-slate-900/40 backdrop-blur-2xl border-r border-white/5">
+      <aside className="z-10 w-full md:w-80 shrink-0 p-4 md:p-6 flex flex-col space-y-4 md:space-y-6 bg-slate-900/40 backdrop-blur-2xl border-b md:border-b-0 md:border-r border-white/5">
         <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-500/20">
-            <span className="text-2xl font-black text-white">K</span>
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-700 flex items-center justify-center shadow-xl shadow-blue-500/20">
+            <span className="text-xl md:text-2xl font-black text-white">K</span>
           </div>
           <div>
-            <h1 className="text-lg font-bold google-font leading-tight">KING AI</h1>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Enterprise OS</p>
+            <h1 className="text-base md:text-lg font-bold google-font leading-tight">KING AI</h1>
+            <p className="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-widest">Enterprise OS</p>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-6">
+        <div className="hidden md:flex flex-1 overflow-y-auto scrollbar-hide flex-col space-y-6">
           <DeviceDashboard state={deviceState} />
           <div className="p-5 rounded-3xl bg-white/5 border border-white/5 space-y-4">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Device Status</h3>
@@ -248,34 +264,40 @@ const App: React.FC = () => {
 
         <button 
           onClick={isSessionActive ? stopAssistant : startAssistant}
-          className={`w-full py-5 rounded-2xl font-black text-xs tracking-[0.2em] uppercase transition-all duration-500 shadow-2xl ${
+          className={`w-full py-4 md:py-5 rounded-xl md:rounded-2xl font-black text-xs tracking-[0.2em] uppercase transition-all duration-500 shadow-2xl active:scale-95 touch-manipulation ${
             isSessionActive 
-              ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white' 
-              : 'bg-blue-600 text-white hover:bg-blue-500 hover:scale-[1.02] active:scale-95'
+              ? 'bg-red-500/10 text-red-400 border border-red-500/30' 
+              : 'bg-blue-600 text-white shadow-blue-600/20'
           }`}
         >
           {isSessionActive ? 'Shut Down' : 'Initialize King'}
         </button>
       </aside>
 
-      <main className="z-10 flex-1 flex flex-col relative p-6">
-        <header className="flex justify-between items-center mb-8 px-4 opacity-60">
-          <div className="text-xs font-black tracking-tighter">
+      <main className="z-10 flex-1 flex flex-col relative p-4 md:p-6 overflow-hidden">
+        <header className="flex justify-between items-center mb-4 md:mb-8 px-2 opacity-60">
+          <div className="text-[10px] md:text-xs font-black tracking-tighter">
             {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
-          <div className="flex space-x-4">
-             <span className="text-xs font-bold">LTE</span>
-             <span className="text-xs font-bold">
+          <div className="flex space-x-3 md:space-x-4">
+             <span className="text-[10px] md:text-xs font-bold uppercase">King Mobile</span>
+             <span className="text-[10px] md:text-xs font-bold">
                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
              </span>
           </div>
         </header>
 
+        {errorMessage && (
+          <div className="mx-auto mb-4 p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-200 text-xs font-bold text-center animate-bounce">
+            {errorMessage}
+          </div>
+        )}
+
         <div className="flex-1 flex items-center justify-center">
           <AssistantOrb status={status} />
         </div>
 
-        <div className="max-w-xl mx-auto w-full mt-auto mb-4">
+        <div className="max-w-xl mx-auto w-full mt-auto mb-2 md:mb-4 max-h-[30vh] md:max-h-none overflow-hidden flex flex-col">
           <NotificationPanel notifications={notifications} />
         </div>
       </main>

@@ -18,39 +18,37 @@ const AssistantOrb: React.FC<AssistantOrbProps> = ({ status }) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-12">
-      <div className={`relative w-48 h-48 rounded-full transition-all duration-500 flex items-center justify-center ${getGlowColor()}`}>
-        {/* Internal rotating ring for thinking state */}
+    <div className="flex flex-col items-center justify-center p-4 md:p-12">
+      <div className={`relative w-36 h-36 md:w-48 md:h-48 rounded-full transition-all duration-500 flex items-center justify-center ${getGlowColor()}`}>
         {status === AssistantStatus.THINKING && (
           <div className="absolute inset-0 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
         )}
         
-        {/* Dynamic Waveform Simulation */}
         <div className="flex items-center space-x-1">
           {[...Array(5)].map((_, i) => (
             <div 
               key={i}
-              className={`w-1.5 bg-white rounded-full transition-all duration-150 ${
+              className={`w-1 md:w-1.5 bg-white rounded-full transition-all duration-150 ${
                 status === AssistantStatus.LISTENING || status === AssistantStatus.SPEAKING 
                   ? 'animate-bounce' 
                   : 'h-4 opacity-50'
               }`}
               style={{ 
                 animationDelay: `${i * 0.1}s`,
-                height: status === AssistantStatus.LISTENING || status === AssistantStatus.SPEAKING ? '2rem' : '0.5rem'
+                height: status === AssistantStatus.LISTENING || status === AssistantStatus.SPEAKING ? '1.5rem' : '0.4rem'
               }}
             />
           ))}
         </div>
       </div>
-      <div className="mt-8 text-center">
-        <h2 className="text-3xl font-bold google-font tracking-tight">KING</h2>
-        <p className="text-slate-400 mt-2 font-medium">
+      <div className="mt-6 md:mt-8 text-center">
+        <h2 className="text-2xl md:text-3xl font-bold google-font tracking-tight">KING</h2>
+        <p className="text-slate-400 mt-1 md:mt-2 font-medium text-sm md:text-base">
           {status === AssistantStatus.IDLE && 'Say "Hey King" to activate'}
           {status === AssistantStatus.LISTENING && 'Listening...'}
           {status === AssistantStatus.THINKING && 'Thinking...'}
           {status === AssistantStatus.SPEAKING && 'King is speaking'}
-          {status === AssistantStatus.ERROR && 'Connection issue'}
+          {status === AssistantStatus.ERROR && 'Check Permissions'}
         </p>
       </div>
     </div>
