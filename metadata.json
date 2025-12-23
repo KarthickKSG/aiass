@@ -1,0 +1,8 @@
+{
+  "name": "King AI - Premier Android Voice Assistant",
+  "description": "An advanced, highly efficient, and privacy-respecting voice assistant powered by Gemini. Features real-time voice interaction, smart device controls, and a sophisticated Material Design interface.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
