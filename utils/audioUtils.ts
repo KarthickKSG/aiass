@@ -1,4 +1,7 @@
 
+// Import Blob type from @google/genai
+import { Blob } from '@google/genai';
+
 export function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -37,7 +40,11 @@ export async function decodeAudioData(
   return buffer;
 }
 
-export function createBlob(data: Float32Array): { data: string; mimeType: string } {
+/**
+ * createBlob - Encodes Float32Array PCM data into a Base64-encoded Blob object.
+ * Follows Gemini Live API specifications for audio/pcm;rate=16000.
+ */
+export function createBlob(data: Float32Array): Blob {
   const l = data.length;
   const int16 = new Int16Array(l);
   for (let i = 0; i < l; i++) {

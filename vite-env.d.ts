@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 /**
  * Augment the NodeJS namespace to add custom environment variables to process.env.
